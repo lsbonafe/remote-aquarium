@@ -74,12 +74,19 @@ class AquariumPhysicsEngine(
         const val REST_ACCEL_Y = 0.55f
         private const val BUBBLE_BUOYANCY = -80f
         private const val IDLE_THRESHOLD_SEC = 5f
+        private const val IDLE_BLEND_RAMP_SEC = 2f
         private const val TILT_CHANGE_THRESHOLD = 0.05f
+        private const val MAX_DT = 0.05f
+        private const val BUBBLE_MIN_RESPAWN_VY = -20f
+        private const val BUBBLE_RESPAWN_VY_RANGE = 30f
+        private const val IDLE_SWIM_Y_PHASE_SCALE = 1.3f
+        private const val IDLE_SWIM_Y_FORCE_SCALE = 0.6f
+        private const val NANOS_TO_SEC = 1_000_000_000f
     }
 
     fun update(sensor: SensorData): PhysicsState {
         val now = System.nanoTime()
-        val dt = ((now - lastTimeNanos) / 1_000_000_000f).coerceAtMost(0.05f)
+        val dt = ((now - lastTimeNanos) / NANOS_TO_SEC).coerceAtMost(MAX_DT)
         lastTimeNanos = now
         elapsedTimeSec += dt
 
@@ -98,7 +105,7 @@ class AquariumPhysicsEngine(
         val isIdle = (elapsedTimeSec - lastSignificantTiltTime) > IDLE_THRESHOLD_SEC
         // Smooth blend: 0 = full tilt physics, 1 = full idle swim
         val idleBlend = if (isIdle) {
-            ((elapsedTimeSec - lastSignificantTiltTime - IDLE_THRESHOLD_SEC) / 2f).coerceAtMost(1f)
+            ((elapsedTimeSec - lastSignificantTiltTime - IDLE_THRESHOLD_SEC) / IDLE_BLEND_RAMP_SEC).coerceAtMost(1f)
         } else {
             0f
         }
@@ -120,7 +127,7 @@ class AquariumPhysicsEngine(
             if (bubble.y <= margin) {
                 bubble.y = height - margin
                 bubble.x = margin + (Math.random() * (width - margin * 2)).toFloat()
-                bubble.vy = -(20f + (Math.random() * 30f).toFloat())
+                bubble.vy = BUBBLE_MIN_RESPAWN_VY - (Math.random() * BUBBLE_RESPAWN_VY_RANGE).toFloat()
                 bubble.vx = 0f
             }
         }
@@ -141,7 +148,7 @@ class AquariumPhysicsEngine(
         if (idleBlend > 0f) {
             val t = elapsedTimeSec
             fish.vx += sin((t * fish.swimSpeedX + fish.swimPhase).toDouble()).toFloat() * fish.swimForce * dt * idleBlend
-            fish.vy += cos((t * fish.swimSpeedY + fish.swimPhase * 1.3f).toDouble()).toFloat() * fish.swimForce * 0.6f * dt * idleBlend
+            fish.vy += cos((t * fish.swimSpeedY + fish.swimPhase * IDLE_SWIM_Y_PHASE_SCALE).toDouble()).toFloat() * fish.swimForce * IDLE_SWIM_Y_FORCE_SCALE * dt * idleBlend
         }
 
         fish.vx *= fish.drag

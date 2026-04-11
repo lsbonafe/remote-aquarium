@@ -4,35 +4,62 @@ import androidx.compose.remote.creation.RemoteComposeContext
 
 object SandFloorBuilder {
 
+    private data class PebbleSpec(
+        val xFraction: Float,
+        val yOffset: Float,
+        val radius: Float,
+        val color: Int,
+    )
+
+    private data class ResolvedPebble(
+        val x: Float,
+        val y: Float,
+        val radius: Float,
+        val color: Int,
+    )
+
+    private val pebbles = listOf(
+        PebbleSpec(xFraction = 0.08f, yOffset = 0.04f, radius = 5f, color = NeonPalette.CYAN),
+        PebbleSpec(xFraction = 0.22f, yOffset = 0.04f, radius = 7f, color = NeonPalette.MAGENTA),
+        PebbleSpec(xFraction = 0.35f, yOffset = 0.04f, radius = 4f, color = NeonPalette.GREEN),
+        PebbleSpec(xFraction = 0.52f, yOffset = 0.04f, radius = 6f, color = NeonPalette.YELLOW),
+        PebbleSpec(xFraction = 0.68f, yOffset = 0.04f, radius = 5f, color = NeonPalette.HOT_PINK),
+        PebbleSpec(xFraction = 0.78f, yOffset = 0.04f, radius = 8f, color = NeonPalette.CYAN_DARK),
+        PebbleSpec(xFraction = 0.92f, yOffset = 0.04f, radius = 4f, color = NeonPalette.PURPLE),
+    )
+
+    private val corals = listOf(
+        PebbleSpec(xFraction = 0.15f, yOffset = 0.02f, radius = 10f, color = NeonPalette.CORAL_PINK),
+        PebbleSpec(xFraction = 0.13f, yOffset = 0.01f, radius = 7f, color = NeonPalette.CORAL_PINK),
+        PebbleSpec(xFraction = 0.75f, yOffset = 0.02f, radius = 9f, color = NeonPalette.NEON_TEAL),
+        PebbleSpec(xFraction = 0.77f, yOffset = 0.01f, radius = 7f, color = NeonPalette.NEON_TEAL),
+    )
+
+    private fun PebbleSpec.resolve(w: Float, h: Float): ResolvedPebble {
+        val sandTop = AquariumLayout.sandTop(h)
+        return ResolvedPebble(
+            x = w * xFraction,
+            y = sandTop + h * yOffset,
+            radius = radius,
+            color = color,
+        )
+    }
+
     fun draw(ctx: RemoteComposeContext, w: Float, h: Float) {
+        val sandTop = AquariumLayout.sandTop(h)
+        val resolvedPebbles = pebbles.map { it.resolve(w, h) }
+        val resolvedCorals = corals.map { it.resolve(w, h) }
+
         with(ctx) {
-            val sandTop = h * 0.82f
+            rect(0f, sandTop, w, h, color = NeonPalette.DARK_PURPLE)
 
-            // Dark purple sand
-            writer.rcPaint.setColor(0xFF1A0A2E.toInt()).commit()
-            drawRect(0f, sandTop, w, h)
-
-            // Bright neon pebbles
-            val pebbleX = floatArrayOf(0.08f, 0.22f, 0.35f, 0.52f, 0.68f, 0.78f, 0.92f)
-            val pebbleR = floatArrayOf(5f, 7f, 4f, 6f, 5f, 8f, 4f)
-            val pebbleColors = intArrayOf(
-                0xFF00FFFF.toInt(), 0xFFFF00FF.toInt(), 0xFF00FF66.toInt(),
-                0xFFFFFF00.toInt(), 0xFFFF0080.toInt(), 0xFF00CCFF.toInt(),
-                0xFFCC00FF.toInt(),
-            )
-            for (i in pebbleX.indices) {
-                writer.rcPaint.setColor(pebbleColors[i]).commit()
-                drawCircle(w * pebbleX[i], sandTop + h * 0.04f, pebbleR[i])
+            for (p in resolvedPebbles) {
+                circle(p.x, p.y, p.radius, color = p.color)
             }
 
-            // Neon coral
-            writer.rcPaint.setColor(0xFFFF0066.toInt()).commit()
-            drawCircle(w * 0.15f, sandTop + h * 0.02f, 10f)
-            drawCircle(w * 0.13f, sandTop + h * 0.01f, 7f)
-
-            writer.rcPaint.setColor(0xFF00FFCC.toInt()).commit()
-            drawCircle(w * 0.75f, sandTop + h * 0.02f, 9f)
-            drawCircle(w * 0.77f, sandTop + h * 0.01f, 7f)
+            for (c in resolvedCorals) {
+                circle(c.x, c.y, c.radius, color = c.color)
+            }
         }
     }
 }

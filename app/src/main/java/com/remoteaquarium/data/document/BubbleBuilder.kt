@@ -7,8 +7,8 @@ object BubbleBuilder {
 
     private val radii = floatArrayOf(5f, 4f, 6f, 4f, 5f, 3f)
     private val colors = intArrayOf(
-        0xFF00FFFF.toInt(), 0xFFFF00FF.toInt(), 0xFF00FFFF.toInt(),
-        0xFFFFFF00.toInt(), 0xFFFF0080.toInt(), 0xFF00FF66.toInt(),
+        NeonPalette.CYAN, NeonPalette.MAGENTA, NeonPalette.CYAN,
+        NeonPalette.YELLOW, NeonPalette.HOT_PINK, NeonPalette.GREEN,
     )
 
     fun draw(
@@ -20,11 +20,7 @@ object BubbleBuilder {
         with(ctx) {
             for (i in bubblePositions.indices) {
                 val (bx, by) = bubblePositions[i]
-                val radius = radii[i]
-                val color = colors[i]
-
-                writer.rcPaint.setColor(color).commit()
-                drawCircle(bx.toFloat(), by.toFloat(), radius)
+                circle(bx, by, radii[i], color = colors[i])
             }
         }
     }

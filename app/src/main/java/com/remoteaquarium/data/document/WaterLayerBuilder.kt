@@ -6,6 +6,13 @@ import androidx.compose.remote.creation.sin
 
 object WaterLayerBuilder {
 
+    private const val WAVE_SEGMENTS = 8
+    private const val WAVE_BASE_Y = 72f
+    private const val WAVE_AMPLITUDE = 36f
+    private const val WAVE_SPEED = 2f
+    private const val WAVE_PHASE_STEP = 1.5f
+    private const val TILT_SENSITIVITY = 30f
+
     fun draw(
         ctx: RemoteComposeContext,
         w: Float,
@@ -14,19 +21,19 @@ object WaterLayerBuilder {
         accelX: RFloat,
     ) {
         with(ctx) {
-            // Dark background
-            writer.rcPaint.setColor(0xFF0A0A2E.toInt()).commit()
-            drawRect(0f, 0f, w, h)
+            rect(0f, 0f, w, h, color = NeonPalette.DEEP_NAVY)
 
-            // Cyan wave at top
-            writer.rcPaint.setColor(0xFF00FFFF.toInt()).setStrokeWidth(3f).commit()
-            val waveShift = (accelX * 30f).flush()
-            for (i in 0 until 8) {
-                val x1 = w * i / 8f
-                val x2 = w * (i + 1) / 8f
-                val wy1 = (rf(72f) + sin(t * 2f + rf(i * 1.5f) + waveShift) * 36f).flush()
-                val wy2 = (rf(72f) + sin(t * 2f + rf((i + 1) * 1.5f) + waveShift) * 36f).flush()
-                drawLine(x1, wy1.toFloat(), x2, wy2.toFloat())
+            val waveShift = (accelX * TILT_SENSITIVITY).flush()
+            val segmentWidth = w / WAVE_SEGMENTS
+
+            for (i in 0 until WAVE_SEGMENTS) {
+                val x1 = segmentWidth * i
+                val x2 = segmentWidth * (i + 1)
+                val phase1 = i * WAVE_PHASE_STEP
+                val phase2 = (i + 1) * WAVE_PHASE_STEP
+                val wy1 = (rf(WAVE_BASE_Y) + sin(t * WAVE_SPEED + rf(phase1) + waveShift) * WAVE_AMPLITUDE).flush()
+                val wy2 = (rf(WAVE_BASE_Y) + sin(t * WAVE_SPEED + rf(phase2) + waveShift) * WAVE_AMPLITUDE).flush()
+                line(x1, wy1, x2, wy2, color = NeonPalette.CYAN, strokeWidth = 3f)
             }
         }
     }
