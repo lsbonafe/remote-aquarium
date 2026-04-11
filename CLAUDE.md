@@ -1,69 +1,103 @@
 # RemoteAquarium
 
-Interactive aquarium app showcasing AndroidX Remote Compose (server-driven UI). Fish, bubbles, water, and seaweed are rendered from a Remote Compose binary document. The aquarium reacts to phone accelerometer — tilt the device and water/fish shift like a real aquarium.
+Interactive neon aquarium app showcasing AndroidX Remote Compose (server-driven UI). The entire visual scene is rendered from a Remote Compose binary document. Fish and bubbles react to phone tilt with real physics (gravity, momentum, drag, wall bouncing).
 
 ## Build & Test
 
 ```bash
 ./gradlew assembleDebug          # Build debug APK
-./gradlew :app:testDebugUnitTest # Run unit tests (25 tests)
+./gradlew :app:testDebugUnitTest # Run unit tests
+adb install app/build/outputs/apk/debug/app-debug.apk  # Install on device
 ```
 
-## Architecture
+## Architecture Principles
 
-Clean Architecture with package-level separation:
+- **Clean Architecture**: domain/data/presentation layers with strong interface contracts
+- **SOLID**: single responsibility per class, dependency inversion via interfaces, open for extension
+- **TDD**: tests written alongside implementation, full unit test coverage
+- **Modular**: each layer connects through interfaces — data source is swappable (mock → server) via one Hilt binding
+
+## Package Structure
 
 ```
 com.remoteaquarium/
-├── domain/                  # Pure Kotlin contracts
-│   ├── model/               # AquariumDocument, SensorData, SensorVariableNames
-│   ├── repository/          # AquariumRepository interface
-│   └── usecase/             # GetAquariumSceneUseCase
-├── data/                    # Implementation layer
-│   ├── datasource/          # AquariumDataSource interface + MockAquariumDataSource
-│   ├── repository/          # AquariumRepositoryImpl
-│   └── document/            # Remote Compose document builders
-│       ├── AquariumDocumentBuilder  # Orchestrator — registers sensor vars, layers builders
-│       ├── WaterLayerBuilder        # Blue gradient + animated waves + accel offset
-│       ├── FishBuilder              # 6 fish with time-based swimming + sensor reactivity
-│       ├── BubbleBuilder            # 12 rising bubbles with wobble
-│       ├── SeaweedBuilder           # 8 swaying stalks
-│       ├── SandFloorBuilder         # Sandy bottom with pebbles and coral
-│       └── SensorVariableRegistry   # Named float constants (accelX, accelY)
-├── presentation/            # Android UI layer
-│   ├── AquariumActivity     # Fullscreen immersive mode
-│   ├── AquariumViewModel    # Loads document + exposes sensor data
-│   ├── AquariumScreen       # Hosts RemoteComposePlayer via AndroidView
-│   └── sensor/              # Accelerometer integration
-│       ├── SensorDataProvider       # Interface for sensor data flow
-│       ├── DeviceSensorDataProvider # SensorManager + accelerometer listener
-│       └── SensorDataMapper         # Normalizes raw values to -1..1
-└── di/                      # Hilt modules
-    ├── AppModule            # Binds repository, sensor provider, provides SensorManager
-    └── DataModule           # Binds data source (swap point for mock → server)
+├── domain/                     # Pure Kotlin — no Android imports
+│   ├── model/                  # AquariumDocument, SensorData, SensorVariableNames
+│   ├── repository/             # AquariumRepository (interface)
+│   └── usecase/                # GetAquariumSceneUseCase
+├── data/                       # Implementation layer
+│   ├── datasource/             # AquariumDataSource (interface) + MockAquariumDataSource
+│   ├── repository/             # AquariumRepositoryImpl
+│   └── document/               # Remote Compose binary document creation
+│       ├── AquariumDocumentBuilder   # Orchestrator — registers named floats, layers builders
+│       ├── WaterLayerBuilder         # Dark gradient + animated neon waves
+│       ├── FishBuilder               # 18 neon fish (large/medium/small) at physics-driven positions
+│       ├── BubbleBuilder             # 6 neon bubbles at physics-driven positions
+│       ├── SeaweedBuilder            # 8 swaying stalks with time + accel expressions
+│       ├── SandFloorBuilder          # Dark floor with neon pebbles and coral
+│       └── SensorVariableRegistry    # Named float key constants shared between creation and player
+├── presentation/               # Android UI layer
+│   ├── AquariumActivity              # Fullscreen immersive mode, @AndroidEntryPoint
+│   ├── AquariumViewModel             # Loads document, exposes sensor + physics flows
+│   ├── AquariumScreen                # Hosts RemoteComposePlayer, pushes named floats per frame
+│   ├── AquariumUiState               # Sealed interface: Loading, Ready, Error
+│   ├── sensor/                       # Accelerometer integration
+│   │   ├── SensorDataProvider        # Interface: Flow<SensorData>, start(), stop()
+│   │   ├── DeviceSensorDataProvider  # SensorManager + TYPE_ACCELEROMETER listener
+│   │   └── SensorDataMapper          # Normalizes raw values to -1..1 with EMA smoothing
+│   └── physics/                      # App-side physics simulation
+│       └── AquariumPhysicsEngine     # Gravity, momentum, drag, wall bounce for fish + bubbles
+└── di/                         # Hilt DI modules
+    ├── AppModule                     # Binds repository, sensor provider, provides SensorManager
+    └── DataModule                    # Binds data source (swap point: mock → server)
 ```
 
-## Key Design Decisions
+## Remote vs Local Boundary
 
-- **Remote Compose procedural API** (`RemoteComposeContext`) used for document creation — this is the same API a real server would use (plain JVM, no Android SDK dependency)
-- **`RFloat.flush()`** used to break complex expression chains that exceed buffer limits
-- **`AndroidView` + `RemoteComposePlayer`** used instead of `RemoteDocumentPlayer` composable for direct control over `setUserLocalFloat()` sensor injection
-- **Sensor bridge pattern**: Accelerometer → `SensorDataMapper` → `StateFlow<SensorData>` → `collectAsStateWithLifecycle()` → `RemoteComposePlayer.setUserLocalFloat()`
+**Remote (binary document — can change from server without app update):**
+- All visuals: fish shapes/colors/sizes, background, sand, seaweed, bubbles, waves
+- Animation expressions: seaweed sway (sin/cos + time), wave animation
+- Where to draw elements relative to named float positions
+
+**Local (baked into APK):**
+- Physics simulation (AquariumPhysicsEngine): gravity, drag, bounce, momentum
+- Sensor pipeline: accelerometer reading, normalization, smoothing
+- The bridge: `setUserLocalFloat()` pushing 28 values per frame to the player
+- Architecture glue: Hilt, ViewModel, Activity, Compose hosting
+
+**Contract between remote and local:** string-named float variables (`USER:` prefix on creation side, bare name on player side). Document declares them with `addNamedFloat()`, app pushes with `setUserLocalFloat()`. No schema, no type safety — just string matching.
+
+## Key Lessons (Remote Compose alpha07)
+
+1. **`ctx.buffer()` returns the full 1MB pre-allocated buffer** — always trim: `ctx.buffer().copyOf(ctx.bufferSize())`
+2. **`ComponentWidth()`/`ComponentHeight()` don't work** — use hardcoded pixel dimensions matching the document size
+3. **`setUserLocalFloat("name", v)` internally prepends `"USER:"`** — register as `addNamedFloat("USER:name", default)` on creation side
+4. **`RFloat.flush()` is essential** for complex expression chains to avoid buffer overflow
+5. **Builder delegation works** — draw calls across method boundaries are fine as long as dimensions are plain `Float`, not `RFloat` expressions
+6. **Particle system API (`createParticles`/`particlesLoop`) exists but didn't work in testing** — physics runs app-side instead
 
 ## Swapping Mock for Real Server
 
-Change one Hilt binding in `DataModule.kt`:
+Change one binding in `di/DataModule.kt`:
 ```kotlin
 @Binds
 abstract fun bindAquariumDataSource(impl: RemoteAquariumDataSource): AquariumDataSource
 ```
-Where `RemoteAquariumDataSource` fetches bytes from HTTP and wraps in `AquariumDocument`.
+Where `RemoteAquariumDataSource` fetches `ByteArray` over HTTP and wraps in `AquariumDocument`.
 
 ## Tech Stack
 
-- Kotlin 2.2.10 (AGP built-in), AGP 9.1.0, Gradle 9.3.1
+- Kotlin 2.1.10 (via AGP built-in) / AGP 9.0.0 / Gradle 9.1.0
 - AndroidX Remote Compose 1.0.0-alpha07
 - Jetpack Compose (BOM 2026.03.00)
-- Hilt 2.59.2
-- JUnit 5 + MockK + Turbine
+- Hilt 2.59.2 (KSP 2.1.10-1.0.31)
+- JUnit 5 + MockK + Turbine for testing
 - Min SDK 29, Target SDK 35
+
+## Code Standards
+
+- Domain layer must remain Android-free (pure Kotlin only)
+- All implementation plans must include testing coverage strategy
+- After code changes, evaluate whether test coverage needs updating
+- Tests follow TDD: write test, then implement
+- Prefer interfaces at layer boundaries for testability and swappability
