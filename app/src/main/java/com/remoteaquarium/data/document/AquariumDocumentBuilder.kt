@@ -19,10 +19,22 @@ class AquariumDocumentBuilder @Inject constructor() {
             W.toInt(), H.toInt(), "Interactive Aquarium",
             RcPlatformServices.None,
         ) {
-            val accelXRef = addNamedFloat(SensorVariableRegistry.DOC_ACCEL_X, 0f)
-            val accelYRef = addNamedFloat(SensorVariableRegistry.DOC_ACCEL_Y, 0f)
-            val accelX = RFloat(writer, accelXRef)
-            val accelY = RFloat(writer, accelYRef)
+            val accelX = RFloat(writer, addNamedFloat(SensorVariableRegistry.DOC_ACCEL_X, 0f))
+            val accelY = RFloat(writer, addNamedFloat(SensorVariableRegistry.DOC_ACCEL_Y, 0f))
+
+            // Register fish position variables
+            val fishPositions = (0 until SensorVariableRegistry.FISH_COUNT).map { i ->
+                val fx = RFloat(writer, addNamedFloat(SensorVariableRegistry.docFishVar(i, "X"), W * 0.5f))
+                val fy = RFloat(writer, addNamedFloat(SensorVariableRegistry.docFishVar(i, "Y"), H * 0.5f))
+                fx to fy
+            }
+
+            // Register bubble position variables
+            val bubblePositions = (0 until SensorVariableRegistry.BUBBLE_COUNT).map { i ->
+                val bx = RFloat(writer, addNamedFloat(SensorVariableRegistry.docBubbleVar(i, "X"), W * 0.5f))
+                val by = RFloat(writer, addNamedFloat(SensorVariableRegistry.docBubbleVar(i, "Y"), H * 0.8f))
+                bx to by
+            }
 
             root {
                 canvas(RecordingModifier().fillMaxSize()) {
@@ -31,8 +43,8 @@ class AquariumDocumentBuilder @Inject constructor() {
                     WaterLayerBuilder.draw(this, W, H, t, accelX)
                     SandFloorBuilder.draw(this, W, H)
                     SeaweedBuilder.draw(this, W, H, t, accelX)
-                    FishBuilder.draw(this, W, H, t, accelX, accelY)
-                    BubbleBuilder.draw(this, W, H, t)
+                    FishBuilder.draw(this, W, H, fishPositions)
+                    BubbleBuilder.draw(this, W, H, bubblePositions)
                 }
             }
         }

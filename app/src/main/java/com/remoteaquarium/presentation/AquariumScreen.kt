@@ -16,8 +16,10 @@ import androidx.compose.remote.player.core.RemoteDocument
 import androidx.compose.remote.player.view.RemoteComposePlayer
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.remoteaquarium.data.document.SensorVariableRegistry
 import com.remoteaquarium.domain.model.AquariumDocument
 import com.remoteaquarium.domain.model.SensorData
+import com.remoteaquarium.presentation.physics.PhysicsState
 
 @Composable
 fun AquariumScreen(
@@ -26,6 +28,12 @@ fun AquariumScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val sensorData by viewModel.sensorData.collectAsStateWithLifecycle(
         initialValue = SensorData()
+    )
+    val physicsState by viewModel.physicsState.collectAsStateWithLifecycle(
+        initialValue = PhysicsState(
+            fish = List(SensorVariableRegistry.FISH_COUNT) { 540f to 1200f },
+            bubbles = List(SensorVariableRegistry.BUBBLE_COUNT) { 540f to 1920f },
+        )
     )
 
     DisposableEffect(Unit) {
@@ -39,6 +47,7 @@ fun AquariumScreen(
         is AquariumUiState.Ready -> AquariumPlayer(
             document = state.aquariumDocument,
             sensorData = sensorData,
+            physicsState = physicsState,
         )
     }
 }
@@ -71,6 +80,7 @@ private fun AquariumErrorScreen(message: String) {
 private fun AquariumPlayer(
     document: AquariumDocument,
     sensorData: SensorData,
+    physicsState: PhysicsState,
 ) {
     val remoteDoc = remember(document.documentBytes) {
         RemoteDocument(document.documentBytes)
@@ -83,8 +93,24 @@ private fun AquariumPlayer(
             }
         },
         update = { player ->
-            player.setUserLocalFloat(document.sensorVariableNames.accelX, sensorData.accelX)
-            player.setUserLocalFloat(document.sensorVariableNames.accelY, sensorData.accelY)
+            // Sensor values (for waves, seaweed)
+            player.setUserLocalFloat(SensorVariableRegistry.ACCEL_X, sensorData.accelX)
+            player.setUserLocalFloat(SensorVariableRegistry.ACCEL_Y, sensorData.accelY)
+
+            // Fish positions
+            for (i in physicsState.fish.indices) {
+                val (x, y) = physicsState.fish[i]
+                player.setUserLocalFloat(SensorVariableRegistry.fishVar(i, "X"), x)
+                player.setUserLocalFloat(SensorVariableRegistry.fishVar(i, "Y"), y)
+            }
+
+            // Bubble positions
+            for (i in physicsState.bubbles.indices) {
+                val (x, y) = physicsState.bubbles[i]
+                player.setUserLocalFloat(SensorVariableRegistry.bubbleVar(i, "X"), x)
+                player.setUserLocalFloat(SensorVariableRegistry.bubbleVar(i, "Y"), y)
+            }
+
             player.invalidate()
         },
         modifier = Modifier.fillMaxSize(),

@@ -8,11 +8,20 @@ object SensorVariableRegistry {
     const val ACCEL_X = "accelX"
     const val ACCEL_Y = "accelY"
 
-    // Used by the document creation side (addNamedFloat)
     const val DOC_ACCEL_X = "${USER_PREFIX}${ACCEL_X}"
     const val DOC_ACCEL_Y = "${USER_PREFIX}${ACCEL_Y}"
 
-    // Used by the player side (setUserLocalFloat — which adds USER: prefix itself)
+    // Fish positions (6 fish x 2 coords)
+    fun fishVar(index: Int, axis: String) = "fish${index}$axis"
+    fun docFishVar(index: Int, axis: String) = "${USER_PREFIX}fish${index}$axis"
+
+    // Bubble positions (6 bubbles x 2 coords)
+    fun bubbleVar(index: Int, axis: String) = "bubble${index}$axis"
+    fun docBubbleVar(index: Int, axis: String) = "${USER_PREFIX}bubble${index}$axis"
+
+    const val FISH_COUNT = 18
+    const val BUBBLE_COUNT = 6
+
     val NAMES = SensorVariableNames(
         accelX = ACCEL_X,
         accelY = ACCEL_Y,
