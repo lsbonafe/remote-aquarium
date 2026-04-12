@@ -23,20 +23,20 @@ class AquariumRepositoryImplTest {
 
     @Test
     fun `getAquariumDocument delegates to data source`() = runTest {
-        coEvery { dataSource.fetchAquariumDocument() } returns fakeDocument
+        coEvery { dataSource.fetchAquariumDocument(any(), any()) } returns fakeDocument
 
-        val result = repository.getAquariumDocument()
+        val result = repository.getAquariumDocument(1080f, 2400f)
 
         assertEquals(fakeDocument, result)
-        coVerify(exactly = 1) { dataSource.fetchAquariumDocument() }
+        coVerify(exactly = 1) { dataSource.fetchAquariumDocument(1080f, 2400f) }
     }
 
     @Test
     fun `getAquariumDocument propagates data source exceptions`() = runTest {
-        coEvery { dataSource.fetchAquariumDocument() } throws RuntimeException("Fetch failed")
+        coEvery { dataSource.fetchAquariumDocument(any(), any()) } throws RuntimeException("Fetch failed")
 
         assertThrows<RuntimeException> {
-            repository.getAquariumDocument()
+            repository.getAquariumDocument(1080f, 2400f)
         }
     }
 }

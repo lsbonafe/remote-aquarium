@@ -1,5 +1,8 @@
 package com.remoteaquarium.presentation
 
+import android.content.Context
+import android.content.res.Resources
+import android.util.DisplayMetrics
 import app.cash.turbine.test
 import com.remoteaquarium.domain.model.AquariumDocument
 import com.remoteaquarium.domain.model.SensorData
@@ -7,6 +10,7 @@ import com.remoteaquarium.domain.model.SensorVariableNames
 import com.remoteaquarium.domain.usecase.GetAquariumSceneUseCase
 import com.remoteaquarium.presentation.sensor.SensorDataProvider
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +34,17 @@ class AquariumViewModelTest {
     private val getAquariumScene = mockk<GetAquariumSceneUseCase>()
     private val sensorFlow = MutableStateFlow(SensorData())
     private val sensorDataProvider = mockk<SensorDataProvider>(relaxed = true) {
-        io.mockk.every { sensorData } returns sensorFlow
+        every { sensorData } returns sensorFlow
+    }
+    private val displayMetrics = DisplayMetrics().apply {
+        widthPixels = 1080
+        heightPixels = 2400
+    }
+    private val resources = mockk<Resources> {
+        every { this@mockk.displayMetrics } returns this@AquariumViewModelTest.displayMetrics
+    }
+    private val context = mockk<Context> {
+        every { this@mockk.resources } returns this@AquariumViewModelTest.resources
     }
 
     private val fakeDocument = AquariumDocument(
@@ -50,8 +64,8 @@ class AquariumViewModelTest {
 
     @Test
     fun `initial state is Loading`() = runTest {
-        coEvery { getAquariumScene() } returns fakeDocument
-        val viewModel = AquariumViewModel(getAquariumScene, sensorDataProvider)
+        coEvery { getAquariumScene(any(), any()) } returns fakeDocument
+        val viewModel = AquariumViewModel(getAquariumScene, sensorDataProvider, context)
 
         viewModel.uiState.test {
             assertEquals(AquariumUiState.Loading, awaitItem())
@@ -61,8 +75,8 @@ class AquariumViewModelTest {
 
     @Test
     fun `state transitions to Ready after successful load`() = runTest {
-        coEvery { getAquariumScene() } returns fakeDocument
-        val viewModel = AquariumViewModel(getAquariumScene, sensorDataProvider)
+        coEvery { getAquariumScene(any(), any()) } returns fakeDocument
+        val viewModel = AquariumViewModel(getAquariumScene, sensorDataProvider, context)
 
         viewModel.uiState.test {
             assertEquals(AquariumUiState.Loading, awaitItem())
@@ -74,8 +88,8 @@ class AquariumViewModelTest {
 
     @Test
     fun `state transitions to Error on failure`() = runTest {
-        coEvery { getAquariumScene() } throws RuntimeException("Test error")
-        val viewModel = AquariumViewModel(getAquariumScene, sensorDataProvider)
+        coEvery { getAquariumScene(any(), any()) } throws RuntimeException("Test error")
+        val viewModel = AquariumViewModel(getAquariumScene, sensorDataProvider, context)
 
         viewModel.uiState.test {
             assertEquals(AquariumUiState.Loading, awaitItem())
@@ -89,8 +103,8 @@ class AquariumViewModelTest {
 
     @Test
     fun `startSensors delegates to sensor provider`() = runTest {
-        coEvery { getAquariumScene() } returns fakeDocument
-        val viewModel = AquariumViewModel(getAquariumScene, sensorDataProvider)
+        coEvery { getAquariumScene(any(), any()) } returns fakeDocument
+        val viewModel = AquariumViewModel(getAquariumScene, sensorDataProvider, context)
 
         viewModel.startSensors()
         verify { sensorDataProvider.start() }
@@ -98,8 +112,8 @@ class AquariumViewModelTest {
 
     @Test
     fun `stopSensors delegates to sensor provider`() = runTest {
-        coEvery { getAquariumScene() } returns fakeDocument
-        val viewModel = AquariumViewModel(getAquariumScene, sensorDataProvider)
+        coEvery { getAquariumScene(any(), any()) } returns fakeDocument
+        val viewModel = AquariumViewModel(getAquariumScene, sensorDataProvider, context)
 
         viewModel.stopSensors()
         verify { sensorDataProvider.stop() }

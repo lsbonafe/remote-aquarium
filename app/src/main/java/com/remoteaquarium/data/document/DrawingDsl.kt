@@ -13,14 +13,6 @@ fun RemoteComposeContext.rect(
     drawRect(left, top, right, bottom)
 }
 
-fun RemoteComposeContext.oval(
-    left: Float, top: Float, right: Float, bottom: Float,
-    color: Int,
-) {
-    writer.rcPaint.setColor(color).commit()
-    drawOval(left, top, right, bottom)
-}
-
 fun RemoteComposeContext.circle(
     cx: Float, cy: Float, radius: Float,
     color: Int,
@@ -50,14 +42,6 @@ fun RemoteComposeContext.circle(
 // === Stroked shapes ===
 
 fun RemoteComposeContext.line(
-    x1: Float, y1: Float, x2: Float, y2: Float,
-    color: Int, strokeWidth: Float = 1f,
-) {
-    writer.rcPaint.setColor(color).setStrokeWidth(strokeWidth).commit()
-    drawLine(x1, y1, x2, y2)
-}
-
-fun RemoteComposeContext.line(
     x1: Float, y1: RFloat, x2: Float, y2: RFloat,
     color: Int, strokeWidth: Float = 1f,
 ) {
@@ -71,16 +55,6 @@ fun RemoteComposeContext.line(
 ) {
     writer.rcPaint.setColor(color).setStrokeWidth(strokeWidth).commit()
     drawLine(x1, y1, x2.toFloat(), y2)
-}
-
-// === Gradient shapes ===
-
-fun RemoteComposeContext.gradientRect(
-    left: Float, top: Float, right: Float, bottom: Float,
-    colors: IntArray, stops: FloatArray,
-) {
-    writer.rcPaint.setLinearGradient(0f, 0f, 0f, 1f, colors, stops, 0).commit()
-    drawRect(left, top, right, bottom)
 }
 
 // === Composite shapes ===

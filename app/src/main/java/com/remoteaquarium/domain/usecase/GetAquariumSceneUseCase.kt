@@ -7,5 +7,6 @@ import javax.inject.Inject
 class GetAquariumSceneUseCase @Inject constructor(
     private val repository: AquariumRepository,
 ) {
-    suspend operator fun invoke(): AquariumDocument = repository.getAquariumDocument()
+    suspend operator fun invoke(screenWidth: Float, screenHeight: Float): AquariumDocument =
+        repository.getAquariumDocument(screenWidth, screenHeight)
 }

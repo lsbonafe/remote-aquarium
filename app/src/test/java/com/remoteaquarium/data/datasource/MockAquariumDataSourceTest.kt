@@ -14,7 +14,7 @@ class MockAquariumDataSourceTest {
 
     @Test
     fun `fetchAquariumDocument returns document from builder`() = runTest {
-        val document = dataSource.fetchAquariumDocument()
+        val document = dataSource.fetchAquariumDocument(1080f, 2400f)
 
         assertNotNull(document)
         assertNotNull(document.documentBytes)
@@ -22,7 +22,7 @@ class MockAquariumDataSourceTest {
 
     @Test
     fun `fetchAquariumDocument returns correct sensor variable names`() = runTest {
-        val document = dataSource.fetchAquariumDocument()
+        val document = dataSource.fetchAquariumDocument(1080f, 2400f)
 
         assertEquals(SensorVariableRegistry.NAMES, document.sensorVariableNames)
     }

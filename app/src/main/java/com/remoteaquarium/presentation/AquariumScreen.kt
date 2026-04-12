@@ -89,6 +89,7 @@ private fun AquariumPlayer(
     AndroidView(
         factory = { context ->
             RemoteComposePlayer(context).apply {
+                setBackgroundColor(android.graphics.Color.parseColor("#0A0A2E"))
                 setDocument(remoteDoc)
             }
         },

@@ -23,20 +23,20 @@ class GetAquariumSceneUseCaseTest {
 
     @Test
     fun `invoke delegates to repository`() = runTest {
-        coEvery { repository.getAquariumDocument() } returns fakeDocument
+        coEvery { repository.getAquariumDocument(any(), any()) } returns fakeDocument
 
-        val result = useCase()
+        val result = useCase(1080f, 2400f)
 
         assertEquals(fakeDocument, result)
-        coVerify(exactly = 1) { repository.getAquariumDocument() }
+        coVerify(exactly = 1) { repository.getAquariumDocument(1080f, 2400f) }
     }
 
     @Test
     fun `invoke propagates repository exceptions`() = runTest {
-        coEvery { repository.getAquariumDocument() } throws RuntimeException("Network error")
+        coEvery { repository.getAquariumDocument(any(), any()) } throws RuntimeException("Network error")
 
         assertThrows<RuntimeException> {
-            useCase()
+            useCase(1080f, 2400f)
         }
     }
 }
