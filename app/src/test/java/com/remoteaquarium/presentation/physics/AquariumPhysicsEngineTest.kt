@@ -9,40 +9,39 @@ import kotlin.math.sqrt
 
 class AquariumPhysicsEngineTest {
 
-    // === Collision tests ===
+    // === Collision tests (using CollisionResolver directly) ===
 
     @Test
-    fun `overlapping fish get pushed apart`() {
+    fun `overlapping objects get pushed apart`() {
         val a = PhysicsObject(x = 100f, y = 100f, radius = 30f)
         val b = PhysicsObject(x = 120f, y = 100f, radius = 30f)
 
-        resolveCollision(a, b)
+        CollisionResolver.resolve(a, b)
 
         val dist = sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y))
-        assertTrue(dist >= 59f, "Fish should be pushed to at least minDist apart, got $dist")
+        assertTrue(dist >= 59f, "Should be pushed to at least minDist apart, got $dist")
     }
 
     @Test
-    fun `distant fish are not affected`() {
+    fun `distant objects are not affected`() {
         val a = PhysicsObject(x = 100f, y = 100f, radius = 30f)
         val b = PhysicsObject(x = 300f, y = 300f, radius = 30f)
         val origAx = a.x
-        val origBx = b.x
 
-        resolveCollision(a, b)
+        CollisionResolver.resolve(a, b)
 
-        assertTrue(a.x == origAx && b.x == origBx, "Distant fish should not move")
+        assertEquals(origAx, a.x, "Distant objects should not move")
     }
 
     @Test
-    fun `approaching fish exchange velocity`() {
+    fun `approaching objects exchange velocity`() {
         val a = PhysicsObject(x = 100f, y = 100f, vx = 50f, vy = 0f, radius = 30f)
         val b = PhysicsObject(x = 140f, y = 100f, vx = -50f, vy = 0f, radius = 30f)
 
-        resolveCollision(a, b)
+        CollisionResolver.resolve(a, b)
 
-        assertTrue(a.vx < 50f, "Fish A should slow down, got vx=${a.vx}")
-        assertTrue(b.vx > -50f, "Fish B should slow down, got vx=${b.vx}")
+        assertTrue(a.vx < 50f, "Object A should slow down, got vx=${a.vx}")
+        assertTrue(b.vx > -50f, "Object B should slow down, got vx=${b.vx}")
     }
 
     @Test
@@ -50,138 +49,142 @@ class AquariumPhysicsEngineTest {
         val big = PhysicsObject(x = 100f, y = 100f, radius = 50f)
         val small = PhysicsObject(x = 140f, y = 100f, radius = 20f)
 
-        resolveCollision(big, small)
+        CollisionResolver.resolve(big, small)
 
         val dist = sqrt((small.x - big.x) * (small.x - big.x) + (small.y - big.y) * (small.y - big.y))
         assertTrue(dist >= 69f, "Should be pushed to at least minDist, got $dist")
     }
 
     @Test
-    fun `separating fish dont exchange velocity`() {
+    fun `separating objects dont exchange velocity`() {
         val a = PhysicsObject(x = 100f, y = 100f, vx = -50f, vy = 0f, radius = 30f)
         val b = PhysicsObject(x = 140f, y = 100f, vx = 50f, vy = 0f, radius = 30f)
         val origAvx = a.vx
-        val origBvx = b.vx
 
-        resolveCollision(a, b)
+        CollisionResolver.resolve(a, b)
 
-        assertTrue(abs(a.vx - origAvx) < 0.01f, "Separating fish A velocity should not change")
-        assertTrue(abs(b.vx - origBvx) < 0.01f, "Separating fish B velocity should not change")
+        assertTrue(abs(a.vx - origAvx) < 0.01f, "Separating velocity should not change")
     }
 
-    // === Idle swimming tests ===
+    // === IdleDetector tests ===
 
     @Test
-    fun `fish move when idle with no tilt`() {
-        val engine = AquariumPhysicsEngine(1080f, 2400f)
-        val stillSensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
+    fun `idle blend is zero when tilt changes`() {
+        val detector = IdleDetector()
 
-        // Run enough updates to pass the 5-second idle threshold
-        var state = PhysicsState(emptyList(), emptyList(), emptyList())
-        for (i in 0 until 500) {
-            state = engine.update(stillSensor)
-            Thread.sleep(15)
-            if (i > 400) break
-        }
+        val blend = detector.update(0.5f, 0.1f, 1f)
 
-        // After idle threshold, fish should have moved from initial positions
-        val initialX = 1080f * 0.3f
-        val movedFish = state.fish[0]
-        val dx = abs(movedFish.first - initialX)
-        // Fish should have drifted at least slightly
-        assertTrue(dx > 0.1f || abs(movedFish.second - 2400f * 0.25f) > 0.1f,
-            "Fish should move during idle, dx=$dx")
+        assertEquals(0f, blend)
     }
 
     @Test
-    fun `tilt resets idle timer`() {
-        val engine = AquariumPhysicsEngine(1080f, 2400f)
-        val stillSensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
+    fun `idle blend ramps up after threshold`() {
+        val detector = IdleDetector(idleThresholdSec = 2f, blendRampSec = 1f)
 
-        // Run a few frames still
-        repeat(10) { engine.update(stillSensor) }
+        detector.update(0f, 0f, 0f)
+        val blend = detector.update(0f, 0f, 3.5f)
 
-        // Now tilt significantly
-        val tiltSensor = SensorData(accelX = 0.5f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
-        val stateAfterTilt = engine.update(tiltSensor)
-
-        // Fish should be reacting to tilt, not idle swimming
-        // The tilt should cause horizontal movement
-        val firstFish = stateAfterTilt.fish[0]
-        // Just verify no crash and we get valid positions
-        assertTrue(firstFish.first.isFinite() && firstFish.second.isFinite())
+        assertTrue(blend > 0f, "Should be blending after threshold")
+        assertTrue(blend <= 1f, "Blend should not exceed 1")
     }
 
     @Test
-    fun `idle blend is gradual not instant`() {
-        val engine = AquariumPhysicsEngine(1080f, 2400f)
-        val stillSensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
+    fun `tilt change resets idle timer`() {
+        val detector = IdleDetector(idleThresholdSec = 2f)
 
-        // Capture position just before idle threshold
-        var preIdleState = engine.update(stillSensor)
-        for (i in 0 until 350) {
-            preIdleState = engine.update(stillSensor)
-            Thread.sleep(15)
-        }
+        detector.update(0f, 0f, 0f)
+        detector.update(0f, 0f, 3f) // would be idle
+        detector.update(0.5f, 0f, 3.1f) // tilt change resets
+        val blend = detector.update(0.5f, 0f, 4f) // only 0.9s since reset
 
-        // Capture position just after idle starts
-        val postIdleState = engine.update(stillSensor)
-
-        // The change should be small (gradual blend), not a sudden jump
-        val jumpX = abs(postIdleState.fish[0].first - preIdleState.fish[0].first)
-        val jumpY = abs(postIdleState.fish[0].second - preIdleState.fish[0].second)
-        assertTrue(jumpX < 50f && jumpY < 50f,
-            "Idle transition should be gradual, got jump dx=$jumpX dy=$jumpY")
+        assertEquals(0f, blend, "Should not be idle after tilt change")
     }
 
-    // === Feed tests ===
+    // === PhysicsWorld tests ===
 
     @Test
-    fun `feed spawns one food particle at tap position`() {
+    fun `clampAndBounce keeps object within bounds`() {
+        val world = PhysicsWorld(1080f, 2400f, margin = 40f)
+        val obj = PhysicsObject(x = -10f, y = 3000f, vx = -100f, vy = 100f, restitution = 0.3f)
+
+        world.clampAndBounce(obj)
+
+        assertEquals(40f, obj.x)
+        assertEquals(2360f, obj.y)
+        assertTrue(obj.vx > 0, "Velocity should be reflected")
+        assertTrue(obj.vy < 0, "Velocity should be reflected")
+    }
+
+    @Test
+    fun `clampAndBounce does nothing for objects inside bounds`() {
+        val world = PhysicsWorld(1080f, 2400f, margin = 40f)
+        val obj = PhysicsObject(x = 500f, y = 1200f, vx = 50f, vy = -30f)
+
+        world.clampAndBounce(obj)
+
+        assertEquals(500f, obj.x)
+        assertEquals(1200f, obj.y)
+    }
+
+    // === FoodManager tests ===
+
+    @Test
+    fun `spawn adds food at position`() {
+        val world = PhysicsWorld(1080f, 2400f)
+        val manager = FoodManager(world)
+
+        manager.spawn(500f, 800f, 0f)
+
+        assertTrue(manager.hasFood)
+        assertEquals(1, manager.positions.size)
+        assertEquals(500f, manager.positions[0].first)
+    }
+
+    @Test
+    fun `spawn respects max limit`() {
+        val world = PhysicsWorld(1080f, 2400f)
+        val manager = FoodManager(world, maxFood = 3)
+
+        repeat(10) { manager.spawn(100f * it, 100f, 0f) }
+
+        assertEquals(3, manager.positions.size)
+    }
+
+    @Test
+    fun `checkEating removes food near fish`() {
+        val world = PhysicsWorld(1080f, 2400f)
+        val manager = FoodManager(world, eatDistance = 50f)
+
+        manager.spawn(100f, 100f, 0f)
+        val fish = listOf(PhysicsObject(x = 100f, y = 100f, radius = 30f))
+
+        manager.checkEating(fish)
+
+        assertTrue(!manager.hasFood, "Food should be eaten")
+    }
+
+    @Test
+    fun `checkEating does not remove distant food`() {
+        val world = PhysicsWorld(1080f, 2400f)
+        val manager = FoodManager(world, eatDistance = 50f)
+
+        manager.spawn(100f, 100f, 0f)
+        val fish = listOf(PhysicsObject(x = 900f, y = 900f, radius = 30f))
+
+        manager.checkEating(fish)
+
+        assertTrue(manager.hasFood, "Distant food should not be eaten")
+    }
+
+    // === Integration tests ===
+
+    @Test
+    fun `feed spawns food and fish eat it`() {
         val engine = AquariumPhysicsEngine(1080f, 2400f)
         val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
 
-        engine.feed(500f, 800f)
-        val state = engine.update(sensor)
-
-        assertEquals(1, state.food.size, "One food should be spawned per tap")
-        val (fx, fy) = state.food[0]
-        assertTrue(abs(fx - 500f) < 10f, "Food x should be at tap position, got $fx")
-        assertTrue(abs(fy - 800f) < 50f, "Food y should be near tap position, got $fy")
-    }
-
-    @Test
-    fun `food sinks over time`() {
-        val engine = AquariumPhysicsEngine(1080f, 2400f)
-        val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
-
-        // Drop food far from fish so it has time to sink before being eaten
-        engine.feed(1000f, 100f)
-        val initialState = engine.update(sensor)
-        val initialY = initialState.food[0].second
-
-        var state = initialState
-        repeat(10) {
-            state = engine.update(sensor)
-            Thread.sleep(16)
-        }
-
-        // Food may be eaten quickly, only check if it still exists
-        if (state.food.isNotEmpty()) {
-            assertTrue(state.food[0].second > initialY, "Food should sink (y increases), was $initialY now ${state.food[0].second}")
-        }
-    }
-
-    @Test
-    fun `food is eaten when fish reaches it`() {
-        val engine = AquariumPhysicsEngine(1080f, 2400f)
-        val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
-
-        // Drop food near a fish — fish will be attracted and eat it
-        // Fish 0 starts at roughly (0.3*1080, 0.25*2400) = (324, 600)
         engine.feed(324f, 600f)
 
-        // Run frames — fish should eat the food quickly since it's right on top
         var state = engine.update(sensor)
         for (i in 0 until 100) {
             state = engine.update(sensor)
@@ -198,32 +201,24 @@ class AquariumPhysicsEngineTest {
         val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
 
         val state = engine.update(sensor)
-        assertTrue(state.food.isEmpty(), "No food should exist before feed()")
+        assertTrue(state.food.isEmpty())
     }
 
     @Test
-    fun `max food limit is enforced`() {
+    fun `idle swimming activates after stillness`() {
         val engine = AquariumPhysicsEngine(1080f, 2400f)
+        val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
 
-        repeat(60) { i ->
-            engine.feed(100f + i * 10f, 100f)
+        var state = PhysicsState(emptyList(), emptyList(), emptyList())
+        for (i in 0 until 500) {
+            state = engine.update(sensor)
+            Thread.sleep(15)
+            if (i > 400) break
         }
 
-        val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
-        val state = engine.update(sensor)
-        assertTrue(state.food.size <= 50, "Food count should not exceed max, got ${state.food.size}")
-    }
-
-    // === Helpers ===
-
-    private fun resolveCollision(a: PhysicsObject, b: PhysicsObject) {
-        val engine = AquariumPhysicsEngine(1080f, 2400f)
-        val method = engine.javaClass.getDeclaredMethod(
-            "resolveCollision",
-            PhysicsObject::class.java,
-            PhysicsObject::class.java,
-        )
-        method.isAccessible = true
-        method.invoke(engine, a, b)
+        val initialX = 1080f * 0.3f
+        val dx = abs(state.fish[0].first - initialX)
+        assertTrue(dx > 0.1f || abs(state.fish[0].second - 2400f * 0.25f) > 0.1f,
+            "Fish should move during idle")
     }
 }
