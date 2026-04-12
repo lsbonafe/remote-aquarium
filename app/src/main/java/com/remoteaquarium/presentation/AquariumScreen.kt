@@ -1,6 +1,7 @@
 package com.remoteaquarium.presentation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
@@ -11,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.remote.player.core.RemoteDocument
 import androidx.compose.remote.player.view.RemoteComposePlayer
@@ -33,6 +35,7 @@ fun AquariumScreen(
         initialValue = PhysicsState(
             fish = List(SensorVariableRegistry.FISH_COUNT) { 540f to 1200f },
             bubbles = List(SensorVariableRegistry.BUBBLE_COUNT) { 540f to 1920f },
+            food = emptyList(),
         )
     )
 
@@ -48,6 +51,7 @@ fun AquariumScreen(
             document = state.aquariumDocument,
             sensorData = sensorData,
             physicsState = physicsState,
+            onFeed = { x, y -> viewModel.feed(x, y) },
         )
     }
 }
@@ -81,38 +85,60 @@ private fun AquariumPlayer(
     document: AquariumDocument,
     sensorData: SensorData,
     physicsState: PhysicsState,
+    onFeed: (Float, Float) -> Unit,
 ) {
     val remoteDoc = remember(document.documentBytes) {
         RemoteDocument(document.documentBytes)
     }
 
-    AndroidView(
-        factory = { context ->
-            RemoteComposePlayer(context).apply {
-                setBackgroundColor(android.graphics.Color.parseColor("#0A0A2E"))
-                setDocument(remoteDoc)
-            }
-        },
-        update = { player ->
-            // Sensor values (for waves, seaweed)
-            player.setUserLocalFloat(SensorVariableRegistry.ACCEL_X, sensorData.accelX)
+    Box(modifier = Modifier.fillMaxSize()) {
+        AndroidView(
+            factory = { context ->
+                RemoteComposePlayer(context).apply {
+                    setBackgroundColor(android.graphics.Color.parseColor("#0A0A2E"))
+                    setDocument(remoteDoc)
+                }
+            },
+            update = { player ->
+                player.setUserLocalFloat(SensorVariableRegistry.ACCEL_X, sensorData.accelX)
 
-            // Fish positions
-            for (i in physicsState.fish.indices) {
-                val (x, y) = physicsState.fish[i]
-                player.setUserLocalFloat(SensorVariableRegistry.fishVar(i, "X"), x)
-                player.setUserLocalFloat(SensorVariableRegistry.fishVar(i, "Y"), y)
-            }
+                for (i in physicsState.fish.indices) {
+                    val (x, y) = physicsState.fish[i]
+                    player.setUserLocalFloat(SensorVariableRegistry.fishVar(i, "X"), x)
+                    player.setUserLocalFloat(SensorVariableRegistry.fishVar(i, "Y"), y)
+                }
 
-            // Bubble positions
-            for (i in physicsState.bubbles.indices) {
-                val (x, y) = physicsState.bubbles[i]
-                player.setUserLocalFloat(SensorVariableRegistry.bubbleVar(i, "X"), x)
-                player.setUserLocalFloat(SensorVariableRegistry.bubbleVar(i, "Y"), y)
-            }
+                for (i in physicsState.bubbles.indices) {
+                    val (x, y) = physicsState.bubbles[i]
+                    player.setUserLocalFloat(SensorVariableRegistry.bubbleVar(i, "X"), x)
+                    player.setUserLocalFloat(SensorVariableRegistry.bubbleVar(i, "Y"), y)
+                }
 
-            player.invalidate()
-        },
-        modifier = Modifier.fillMaxSize(),
-    )
+                for (i in 0 until SensorVariableRegistry.FOOD_COUNT) {
+                    if (i < physicsState.food.size) {
+                        val (x, y) = physicsState.food[i]
+                        player.setUserLocalFloat(SensorVariableRegistry.foodVar(i, "X"), x)
+                        player.setUserLocalFloat(SensorVariableRegistry.foodVar(i, "Y"), y)
+                    } else {
+                        player.setUserLocalFloat(SensorVariableRegistry.foodVar(i, "X"), -100f)
+                        player.setUserLocalFloat(SensorVariableRegistry.foodVar(i, "Y"), -100f)
+                    }
+                }
+
+                player.invalidate()
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        // Transparent tap interceptor on top
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures { offset ->
+                        onFeed(offset.x, offset.y)
+                    }
+                }
+        )
+    }
 }

@@ -9,6 +9,10 @@ import javax.inject.Inject
 
 class AquariumDocumentBuilder @Inject constructor() {
 
+    companion object {
+        const val FEED_ACTION_ID = 1
+    }
+
     fun build(screenWidth: Float, screenHeight: Float): AquariumDocument {
         val w = screenWidth
         val h = screenHeight
@@ -31,6 +35,13 @@ class AquariumDocumentBuilder @Inject constructor() {
                 bx to by
             }
 
+            // Food positions (off-screen by default — spawned on tap)
+            val foodPositions = (0 until SensorVariableRegistry.FOOD_COUNT).map { i ->
+                val fx = RFloat(writer, addNamedFloat(SensorVariableRegistry.docFoodVar(i, "X"), -100f))
+                val fy = RFloat(writer, addNamedFloat(SensorVariableRegistry.docFoodVar(i, "Y"), -100f))
+                fx to fy
+            }
+
             root {
                 canvas(RecordingModifier().fillMaxSize()) {
                     val t = ContinuousSec()
@@ -40,7 +51,9 @@ class AquariumDocumentBuilder @Inject constructor() {
                     SeaweedBuilder.draw(this, w, h, t, accelX)
                     FishBuilder.draw(this, w, h, fishPositions)
                     BubbleBuilder.draw(this, w, h, bubblePositions)
+                    FoodBuilder.draw(this, w, h, foodPositions)
                 }
+
             }
         }
 

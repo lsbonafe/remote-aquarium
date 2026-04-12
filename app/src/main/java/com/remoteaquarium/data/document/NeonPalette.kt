@@ -50,6 +50,10 @@ object NeonPalette {
     val AQUA_DARK = 0xFF00CC77.toInt()
     val TEAL_DARK = 0xFF00CC99.toInt()
 
+    // Food
+    val FOOD_BROWN = 0xFF8B5E3C.toInt()
+    val FOOD_GLOW = 0x55CC8844.toInt()
+
     // Neutral
     val WHITE = 0xFFFFFFFF.toInt()
     val BLACK = 0xFF000000.toInt()

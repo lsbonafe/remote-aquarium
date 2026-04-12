@@ -58,6 +58,10 @@ class AquariumViewModel @Inject constructor(
         }
     }
 
+    fun feed(x: Float, y: Float) {
+        physicsEngine.feed(x, y)
+    }
+
     fun startSensors() {
         sensorDataProvider.start()
     }

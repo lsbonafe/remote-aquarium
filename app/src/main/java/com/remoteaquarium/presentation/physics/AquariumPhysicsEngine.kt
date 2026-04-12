@@ -24,6 +24,7 @@ data class PhysicsObject(
 data class PhysicsState(
     val fish: List<Pair<Float, Float>>,
     val bubbles: List<Pair<Float, Float>>,
+    val food: List<Pair<Float, Float>>,
 )
 
 class AquariumPhysicsEngine(
@@ -64,6 +65,13 @@ class AquariumPhysicsEngine(
         PhysicsObject(width * 0.70f, height * 0.92f, vy = -45f, drag = 0.99f, gravityScale = 160f, restitution = 0.1f, radius = 3f),
     )
 
+    private data class FoodParticle(
+        val obj: PhysicsObject,
+        val spawnTime: Float,
+    )
+
+    private val foodParticles = mutableListOf<FoodParticle>()
+
     private var lastTimeNanos = System.nanoTime()
     private var elapsedTimeSec = 0f
     private var lastSignificantTiltTime = 0f
@@ -82,6 +90,11 @@ class AquariumPhysicsEngine(
         private const val IDLE_SWIM_Y_PHASE_SCALE = 1.3f
         private const val IDLE_SWIM_Y_FORCE_SCALE = 0.6f
         private const val NANOS_TO_SEC = 1_000_000_000f
+        private const val FOOD_SINK_SPEED = 25f
+        private const val FOOD_EAT_DISTANCE = 80f
+        private const val FOOD_ATTRACTION_FORCE = 1200f
+        private const val FOOD_TILT_DAMPEN = 0.15f
+        private const val MAX_FOOD = 50
     }
 
     fun update(sensor: SensorData): PhysicsState {
@@ -110,8 +123,40 @@ class AquariumPhysicsEngine(
             0f
         }
 
+        // Find each fish's nearest food target (before physics update)
+        val fishTargets = if (foodParticles.isNotEmpty()) {
+            fishObjects.map { fish ->
+                foodParticles.minByOrNull { f ->
+                    val dx = f.obj.x - fish.x
+                    val dy = f.obj.y - fish.y
+                    dx * dx + dy * dy
+                }
+            }
+        } else {
+            List(fishObjects.size) { null }
+        }
+
+        val hasFood = foodParticles.isNotEmpty()
         for ((i, fish) in fishObjects.withIndex()) {
-            updateFish(fish, tiltX, tiltY, dt, idleBlend)
+            updateFish(fish, tiltX, tiltY, dt, idleBlend, hasFood, fishTargets[i])
+        }
+
+        // Fish eats food when close enough (eat distance = fish radius + base)
+        if (hasFood) {
+            val eatenFood = mutableSetOf<FoodParticle>()
+            for (fish in fishObjects) {
+                val eatDist = fish.radius + FOOD_EAT_DISTANCE
+                for (food in foodParticles) {
+                    if (food in eatenFood) continue
+                    val dx = food.obj.x - fish.x
+                    val dy = food.obj.y - fish.y
+                    if (dx * dx + dy * dy < eatDist * eatDist) {
+                        eatenFood.add(food)
+                        break
+                    }
+                }
+            }
+            foodParticles.removeAll(eatenFood)
         }
 
         // Fish-to-fish collision
@@ -132,23 +177,65 @@ class AquariumPhysicsEngine(
             }
         }
 
+        // Food particles — sink slowly
+        foodParticles.forEach { food ->
+            food.obj.vy += FOOD_SINK_SPEED * dt
+            food.obj.vy *= 0.98f
+            food.obj.y += food.obj.vy * dt
+        }
+
+        // Clamp food to screen + expire old food
+        foodParticles.forEach { food ->
+            if (food.obj.y > height - margin) {
+                food.obj.y = height - margin
+                food.obj.vy = 0f
+            }
+        }
+
         return PhysicsState(
             fish = fishObjects.map { it.x to it.y },
             bubbles = bubbleObjects.map { it.x to it.y },
+            food = foodParticles.map { it.obj.x to it.obj.y },
         )
     }
 
-    private fun updateFish(fish: PhysicsObject, tiltX: Float, tiltY: Float, dt: Float, idleBlend: Float) {
-        // Tilt physics (fades out when idle)
-        val tiltFactor = 1f - idleBlend
-        fish.vx += tiltX * fish.gravityScale * dt * tiltFactor
-        fish.vy += tiltY * fish.gravityScale * dt * tiltFactor
+    fun feed(x: Float, y: Float) {
+        if (foodParticles.size >= MAX_FOOD) return
+        foodParticles.add(
+            FoodParticle(
+                obj = PhysicsObject(x = x, y = y, vy = 0f, drag = 0.98f),
+                spawnTime = elapsedTimeSec,
+            )
+        )
+    }
 
-        // Idle swim force (fades in when idle)
-        if (idleBlend > 0f) {
-            val t = elapsedTimeSec
-            fish.vx += sin((t * fish.swimSpeedX + fish.swimPhase).toDouble()).toFloat() * fish.swimForce * dt * idleBlend
-            fish.vy += cos((t * fish.swimSpeedY + fish.swimPhase * IDLE_SWIM_Y_PHASE_SCALE).toDouble()).toFloat() * fish.swimForce * IDLE_SWIM_Y_FORCE_SCALE * dt * idleBlend
+    private fun updateFish(fish: PhysicsObject, tiltX: Float, tiltY: Float, dt: Float, idleBlend: Float, hasFood: Boolean, foodTarget: FoodParticle?) {
+        if (foodTarget != null) {
+            // Food attraction — strongest force, overrides tilt and idle
+            val dx = foodTarget.obj.x - fish.x
+            val dy = foodTarget.obj.y - fish.y
+            val dist = sqrt(dx * dx + dy * dy)
+            if (dist > 1f) {
+                val nx = dx / dist
+                val ny = dy / dist
+                fish.vx += nx * FOOD_ATTRACTION_FORCE * dt
+                fish.vy += ny * FOOD_ATTRACTION_FORCE * dt
+            }
+            // Minimal tilt so fish don't completely ignore physics
+            fish.vx += tiltX * fish.gravityScale * dt * FOOD_TILT_DAMPEN
+            fish.vy += tiltY * fish.gravityScale * dt * FOOD_TILT_DAMPEN
+        } else {
+            // Normal tilt physics (fades out when idle)
+            val tiltFactor = 1f - idleBlend
+            fish.vx += tiltX * fish.gravityScale * dt * tiltFactor
+            fish.vy += tiltY * fish.gravityScale * dt * tiltFactor
+
+            // Idle swim force (fades in when idle)
+            if (idleBlend > 0f) {
+                val t = elapsedTimeSec
+                fish.vx += sin((t * fish.swimSpeedX + fish.swimPhase).toDouble()).toFloat() * fish.swimForce * dt * idleBlend
+                fish.vy += cos((t * fish.swimSpeedY + fish.swimPhase * IDLE_SWIM_Y_PHASE_SCALE).toDouble()).toFloat() * fish.swimForce * IDLE_SWIM_Y_FORCE_SCALE * dt * idleBlend
+            }
         }
 
         fish.vx *= fish.drag
