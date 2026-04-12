@@ -18,7 +18,6 @@ class AquariumDocumentBuilder @Inject constructor() {
             RcPlatformServices.None,
         ) {
             val accelX = RFloat(writer, addNamedFloat(SensorVariableRegistry.DOC_ACCEL_X, 0f))
-            val accelY = RFloat(writer, addNamedFloat(SensorVariableRegistry.DOC_ACCEL_Y, 0f))
 
             val fishPositions = (0 until SensorVariableRegistry.FISH_COUNT).map { i ->
                 val fx = RFloat(writer, addNamedFloat(SensorVariableRegistry.docFishVar(i, "X"), w * 0.5f))

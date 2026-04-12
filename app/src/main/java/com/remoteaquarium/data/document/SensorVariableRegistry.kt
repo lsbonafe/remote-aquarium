@@ -9,7 +9,6 @@ object SensorVariableRegistry {
     const val ACCEL_Y = "accelY"
 
     const val DOC_ACCEL_X = "${USER_PREFIX}${ACCEL_X}"
-    const val DOC_ACCEL_Y = "${USER_PREFIX}${ACCEL_Y}"
 
     // Fish positions (6 fish x 2 coords)
     fun fishVar(index: Int, axis: String) = "fish${index}$axis"

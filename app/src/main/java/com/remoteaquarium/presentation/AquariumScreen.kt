@@ -96,7 +96,6 @@ private fun AquariumPlayer(
         update = { player ->
             // Sensor values (for waves, seaweed)
             player.setUserLocalFloat(SensorVariableRegistry.ACCEL_X, sensorData.accelX)
-            player.setUserLocalFloat(SensorVariableRegistry.ACCEL_Y, sensorData.accelY)
 
             // Fish positions
             for (i in physicsState.fish.indices) {
