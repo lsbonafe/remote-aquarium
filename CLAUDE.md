@@ -1,6 +1,6 @@
 # RemoteAquarium
 
-Interactive neon aquarium app showcasing AndroidX Remote Compose (server-driven UI). The entire visual scene is rendered from a Remote Compose binary document. Fish and bubbles react to phone tilt with real physics (gravity, momentum, drag, wall bouncing).
+Interactive neon aquarium app showcasing AndroidX Remote Compose (server-driven UI). The entire visual scene is rendered from a Remote Compose binary document. 18 fish and 6 bubbles react to phone tilt with real physics (gravity, momentum, drag, wall bouncing, fish-to-fish collision, idle swimming).
 
 ## Build & Test
 
@@ -16,6 +16,7 @@ adb install app/build/outputs/apk/debug/app-debug.apk  # Install on device
 - **SOLID**: single responsibility per class, dependency inversion via interfaces, open for extension
 - **TDD**: tests written alongside implementation, full unit test coverage
 - **Modular**: each layer connects through interfaces — data source is swappable (mock → server) via one Hilt binding
+- **Declarative**: drawing DSL (`fish()`, `circle()`, `line()`, `rect()`) over imperative RC API; specs declare fractions, `resolve()` computes positions; colors via `NeonPalette`; physics constants named
 
 ## Package Structure
 
@@ -30,23 +31,26 @@ com.remoteaquarium/
 │   ├── repository/             # AquariumRepositoryImpl
 │   └── document/               # Remote Compose binary document creation
 │       ├── AquariumDocumentBuilder   # Orchestrator — registers named floats, layers builders
+│       ├── DrawingDsl                # Declarative extensions: fish(), circle(), line(), rect(), oval()
+│       ├── NeonPalette               # Named color constants (CYAN, MAGENTA, HOT_PINK, etc.)
+│       ├── AquariumLayout            # Shared layout constants (sand top fraction)
 │       ├── WaterLayerBuilder         # Dark gradient + animated neon waves
-│       ├── FishBuilder               # 18 neon fish (large/medium/small) at physics-driven positions
+│       ├── FishBuilder               # 18 neon fish at physics-driven positions
 │       ├── BubbleBuilder             # 6 neon bubbles at physics-driven positions
-│       ├── SeaweedBuilder            # 8 swaying stalks with time + accel expressions
-│       ├── SandFloorBuilder          # Dark floor with neon pebbles and coral
-│       └── SensorVariableRegistry    # Named float key constants shared between creation and player
+│       ├── SeaweedBuilder            # 8 swaying stalks (spec/resolve pattern)
+│       ├── SandFloorBuilder          # Dark floor with neon pebbles and coral (spec/resolve pattern)
+│       └── SensorVariableRegistry    # Named float key constants (USER: prefix convention)
 ├── presentation/               # Android UI layer
 │   ├── AquariumActivity              # Fullscreen immersive mode, @AndroidEntryPoint
-│   ├── AquariumViewModel             # Loads document, exposes sensor + physics flows
-│   ├── AquariumScreen                # Hosts RemoteComposePlayer, pushes named floats per frame
+│   ├── AquariumViewModel             # Loads document, runs physics, exposes flows
+│   ├── AquariumScreen                # Hosts RemoteComposePlayer, pushes 28 named floats per frame
 │   ├── AquariumUiState               # Sealed interface: Loading, Ready, Error
 │   ├── sensor/                       # Accelerometer integration
 │   │   ├── SensorDataProvider        # Interface: Flow<SensorData>, start(), stop()
 │   │   ├── DeviceSensorDataProvider  # SensorManager + TYPE_ACCELEROMETER listener
 │   │   └── SensorDataMapper          # Normalizes raw values to -1..1 with EMA smoothing
 │   └── physics/                      # App-side physics simulation
-│       └── AquariumPhysicsEngine     # Gravity, momentum, drag, wall bounce for fish + bubbles
+│       └── AquariumPhysicsEngine     # Gravity, drag, wall bounce, collision, idle swimming
 └── di/                         # Hilt DI modules
     ├── AppModule                     # Binds repository, sensor provider, provides SensorManager
     └── DataModule                    # Binds data source (swap point: mock → server)
@@ -60,7 +64,7 @@ com.remoteaquarium/
 - Where to draw elements relative to named float positions
 
 **Local (baked into APK):**
-- Physics simulation (AquariumPhysicsEngine): gravity, drag, bounce, momentum
+- Physics simulation (AquariumPhysicsEngine): gravity, drag, bounce, collision, idle swimming
 - Sensor pipeline: accelerometer reading, normalization, smoothing
 - The bridge: `setUserLocalFloat()` pushing 28 values per frame to the player
 - Architecture glue: Hilt, ViewModel, Activity, Compose hosting
@@ -70,11 +74,14 @@ com.remoteaquarium/
 ## Key Lessons (Remote Compose alpha07)
 
 1. **`ctx.buffer()` returns the full 1MB pre-allocated buffer** — always trim: `ctx.buffer().copyOf(ctx.bufferSize())`
-2. **`ComponentWidth()`/`ComponentHeight()` don't work** — use hardcoded pixel dimensions matching the document size
+2. **`ComponentWidth()`/`ComponentHeight()` don't work** — pass actual screen dimensions as plain `Float` instead
 3. **`setUserLocalFloat("name", v)` internally prepends `"USER:"`** — register as `addNamedFloat("USER:name", default)` on creation side
 4. **`RFloat.flush()` is essential** for complex expression chains to avoid buffer overflow
 5. **Builder delegation works** — draw calls across method boundaries are fine as long as dimensions are plain `Float`, not `RFloat` expressions
-6. **Particle system API (`createParticles`/`particlesLoop`) exists but didn't work in testing** — physics runs app-side instead
+6. **`setRootContentBehavior()` crashes the player** — operation ID 65 not recognized; build document at actual screen size instead
+7. **Document must match screen size** — pass `displayMetrics` dimensions to builder; hardcoded sizes cause gaps on different devices
+8. **`accelY` is useless in document expressions** — raw value ~0.55 constant (gravity); only works app-side after subtracting rest baseline
+9. **Particle system API exists but didn't work** — `createParticles`/`particlesLoop` rendered but never updated; physics runs app-side instead
 
 ## Swapping Mock for Real Server
 
@@ -101,3 +108,7 @@ Where `RemoteAquariumDataSource` fetches `ByteArray` over HTTP and wraps in `Aqu
 - After code changes, evaluate whether test coverage needs updating
 - Tests follow TDD: write test, then implement
 - Prefer interfaces at layer boundaries for testability and swappability
+- Drawing code uses declarative DSL — no direct `writer.rcPaint.setColor().commit()` in builders
+- Colors via `NeonPalette` constants — no hex literals in builders
+- Layout specs declare fractions, `resolve()` computes pixel positions — no inline `w * 0.42f` math in draw calls
+- Physics constants named in companion object — no magic numbers

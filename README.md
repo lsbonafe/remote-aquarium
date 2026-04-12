@@ -2,13 +2,13 @@
 
 An interactive neon aquarium Android app showcasing **AndroidX Remote Compose** — a server-driven UI framework that serializes drawing operations into compact binary documents rendered natively on Android.
 
-Fish swim, seaweed sways, bubbles rise, and waves ripple — all defined as Remote Compose binary operations. Tilt your phone and the entire scene reacts to the accelerometer, as if you're holding a real aquarium.
+18 neon fish swim with physics-based movement (gravity, momentum, drag, wall bouncing, fish-to-fish collision). Bubbles rise and recycle. Seaweed sways. Waves ripple. Tilt your phone and everything reacts — fish drift toward the lowest point, bounce off screen edges, and settle naturally.
 
 ## What is Remote Compose?
 
 [AndroidX Remote Compose](https://developer.android.com/jetpack/androidx/releases/compose-remote) (`androidx.compose.remote`) is an official AndroidX library (currently alpha) that lets you define UI on a server using Kotlin, serialize it into a binary format, and render it on Android without app updates.
 
-Instead of JSON or XML, it captures **actual drawing operations** (rects, ovals, circles, lines, gradients, animations) into a compact binary document that a player renders natively via Canvas.
+Instead of JSON or XML, it captures **actual drawing operations** (ovals, circles, lines, gradients, animations) into a compact binary document that a player renders natively via Canvas.
 
 ## Architecture
 
@@ -21,25 +21,26 @@ Instead of JSON or XML, it captures **actual drawing operations** (rects, ovals,
 │  │ AquariumActivity │──▶│ AquariumViewModel │──▶│  AquariumScreen   │ │
 │  │                  │   │                  │   │                   │ │
 │  │ Fullscreen       │   │ Loads document   │   │ Hosts player +   │ │
-│  │ immersive mode   │   │ Exposes sensor   │   │ bridges sensor   │ │
-│  │                  │   │ data flow        │   │ data to player   │ │
+│  │ immersive mode   │   │ Runs physics     │   │ pushes positions  │ │
+│  │                  │   │ Exposes flows    │   │ to player         │ │
 │  └─────────────────┘   └──────┬───────────┘   └────────┬──────────┘ │
 │                               │                        │            │
-│                    ┌──────────┘                        │            │
-│                    │                                    │            │
-│  ┌─────────────────▼──────────────────┐  ┌─────────────▼──────────┐ │
-│  │        SensorDataProvider          │  │  RemoteComposePlayer   │ │
-│  │                                    │  │  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄  │ │
-│  │  DeviceSensorDataProvider          │  │  REMOTE COMPOSE UI     │ │
-│  │   └─ SensorManager (accelerometer) │  │                        │ │
-│  │   └─ SensorDataMapper (normalize)  │  │  Renders binary doc    │ │
-│  │   └─ Flow<SensorData> output       │──▶  setUserLocalFloat()   │ │
-│  │                                    │  │  pushes sensor values  │ │
-│  └────────────────────────────────────┘  └────────────────────────┘ │
+│            ┌──────────────────┤                        │            │
+│            │                  │                        │            │
+│  ┌─────────▼────────┐  ┌─────▼──────────────┐  ┌──────▼───────────┐ │
+│  │  SensorDataProvider│  │ PhysicsEngine      │  │RemoteComposePlayer│ │
+│  │                   │  │                    │  │  ┄┄┄┄┄┄┄┄┄┄┄┄┄  │ │
+│  │  Accelerometer    │  │ Per-fish gravity,  │  │  REMOTE COMPOSE  │ │
+│  │  + SensorMapper   │  │ drag, collision,   │  │  UI              │ │
+│  │  + EMA smoothing  │──▶ wall bounce,       │  │                  │ │
+│  │                   │  │ idle swimming      │──▶ setUserLocalFloat │ │
+│  │  Flow<SensorData> │  │                    │  │ pushes 28 floats │ │
+│  └───────────────────┘  │ Flow<PhysicsState> │  │ per frame        │ │
+│                         └────────────────────┘  └──────────────────┘ │
 │                                                                      │
 └──────────────────────────────────────────────────────────────────────┘
                                │
-                    GetAquariumSceneUseCase
+                    GetAquariumSceneUseCase(screenWidth, screenHeight)
                                │
 ┌──────────────────────────────▼───────────────────────────────────────┐
 │                                                                      │
@@ -76,25 +77,25 @@ Instead of JSON or XML, it captures **actual drawing operations** (rects, ovals,
 │  │         ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄                │  │
 │  │  This is what a real server would do — build binary documents  │  │
 │  │                                                                │  │
-│  │  ┌────────────────────────┐                                    │  │
-│  │  │ AquariumDocumentBuilder │◀── Orchestrator                   │  │
-│  │  │                        │    Registers sensor named floats   │  │
-│  │  │  RemoteComposeContext  │    Creates canvas, delegates to:   │  │
-│  │  └───────────┬────────────┘                                    │  │
+│  │  ┌────────────────────────┐  ┌──────────────┐                 │  │
+│  │  │ AquariumDocumentBuilder │  │  DrawingDsl   │                 │  │
+│  │  │ Orchestrator            │  │  rect/oval/   │                 │  │
+│  │  │ Registers named floats  │  │  circle/line/ │                 │  │
+│  │  │ Delegates to builders   │  │  fish          │                 │  │
+│  │  └───────────┬────────────┘  └──────────────┘                 │  │
 │  │              │                                                 │  │
 │  │    ┌─────────┼──────────┬──────────┬──────────┐               │  │
 │  │    ▼         ▼          ▼          ▼          ▼               │  │
 │  │  ┌──────┐ ┌──────┐ ┌────────┐ ┌───────┐ ┌────────┐          │  │
 │  │  │Water │ │Sand  │ │Seaweed │ │ Fish  │ │Bubble  │          │  │
 │  │  │Layer │ │Floor │ │Builder │ │Builder│ │Builder │          │  │
-│  │  │Builder│ │Builder│ │        │ │       │ │        │          │  │
 │  │  └──────┘ └──────┘ └────────┘ └───────┘ └────────┘          │  │
 │  │                                                                │  │
-│  │  Each builder writes drawing operations (drawOval, drawCircle, │  │
-│  │  drawRect, drawLine) + animation expressions (sin, cos, time)  │  │
-│  │  + sensor expressions (accelX, accelY) into the binary buffer  │  │
+│  │  Supporting: NeonPalette (colors), AquariumLayout (constants)  │  │
 │  │                                                                │  │
-│  │  Output: ByteArray (binary document, ~14KB)                    │  │
+│  │  Builders use declarative DSL: fish(), circle(), line(), etc.  │  │
+│  │  Specs declare fractions, resolve() computes pixel positions   │  │
+│  │  Document sized to actual screen via displayMetrics            │  │
 │  └────────────────────────────────────────────────────────────────┘  │
 │                                                                      │
 └──────────────────────────────────────────────────────────────────────┘
@@ -114,16 +115,19 @@ Instead of JSON or XML, it captures **actual drawing operations** (rects, ovals,
 |-----------|:-:|---|
 | `RemoteComposePlayer` | **Yes** | Android View that renders binary documents |
 | `AquariumDocumentBuilder` | **Yes** | Creates the binary document using `RemoteComposeContext` |
+| `DrawingDsl` | **Yes** | Declarative extension functions (`fish()`, `circle()`, `line()`, etc.) over imperative RC API |
 | `WaterLayerBuilder`, `FishBuilder`, etc. | **Yes** | Write drawing ops + expressions into the binary buffer |
-| `SensorVariableRegistry` | **Bridge** | Defines named float keys shared between creation (`USER:accelX`) and player (`accelX`) |
+| `NeonPalette` | **Yes** | Named color constants used by builders |
+| `SensorVariableRegistry` | **Bridge** | Named float keys shared between creation (`USER:accelX`) and player (`accelX`) |
 | `AquariumScreen` | No | Jetpack Compose UI that hosts the `RemoteComposePlayer` via `AndroidView` |
-| `AquariumViewModel` | No | Standard MVVM — loads document, exposes sensor flow |
+| `AquariumViewModel` | No | Loads document, runs physics, exposes flows |
+| `AquariumPhysicsEngine` | No | App-side physics: gravity, drag, collision, idle swimming |
 | `DeviceSensorDataProvider` | No | Reads accelerometer via `SensorManager` |
-| `SensorDataMapper` | No | Normalizes raw sensor values to -1..1 with smoothing |
+| `SensorDataMapper` | No | Normalizes raw sensor values to -1..1 with EMA smoothing |
 | Domain models & repository | No | Clean Architecture contracts |
 | Hilt modules | No | Dependency injection wiring |
 
-### Sensor bridge flow
+### How physics and rendering connect
 
 ```
 Accelerometer (hardware)
@@ -132,23 +136,27 @@ Accelerometer (hardware)
 SensorManager.onSensorChanged()
     │
     ▼
-SensorDataMapper  ──────────────  normalizes to -1..1, low-pass filter
+SensorDataMapper  ───────────────  normalizes to -1..1, EMA smoothing
     │
-    ▼
-StateFlow<SensorData>
+    ├──▶ AquariumPhysicsEngine   ──  per-fish: gravity from tilt, drag,
+    │       │                        wall bounce, fish-to-fish collision,
+    │       │                        idle swimming when still for 5s
+    │       ▼
+    │    PhysicsState (18 fish + 6 bubble positions)
+    │       │
+    │       ▼
+    │    setUserLocalFloat("fish0X", 423f)  ──  28 position floats
+    │    setUserLocalFloat("fish0Y", 891f)      pushed per frame
     │
-    ▼
-collectAsStateWithLifecycle()  ──  Compose recomposition on change
-    │
-    ▼
-RemoteComposePlayer.setUserLocalFloat("accelX", value)
-    │
-    ▼
-Remote Compose expression engine  ──  expressions like
-    │                                  rf(324f) + sin(t * 0.4f) * 162f + accelX * 40f
-    ▼                                  re-evaluate with new sensor value
-Canvas redraws with shifted positions
+    └──▶ setUserLocalFloat("accelX", 0.3f)  ──  for waves + seaweed
+            │
+            ▼
+    RemoteComposePlayer renders document with current values
 ```
+
+### Idle swimming
+
+When no tilt change is detected for 5 seconds, fish transition from physics-reactive mode to organic swimming — each fish has a unique sin/cos pattern with different speed and phase. The blend is gradual over 2 seconds. Any tilt change instantly switches back to physics mode.
 
 ## Build & Run
 
@@ -182,9 +190,13 @@ Change one Hilt binding in `DataModule.kt`:
 
 Where `RemoteAquariumDataSource` fetches the binary document bytes over HTTP.
 
-## Lessons learned from Remote Compose alpha
+## Lessons learned from Remote Compose alpha07
 
 1. **`ctx.buffer()` returns the full pre-allocated 1MB buffer** — always trim with `ctx.buffer().copyOf(ctx.bufferSize())`
-2. **`ComponentWidth()`/`ComponentHeight()` expressions don't work reliably** — use hardcoded pixel dimensions matching the document size instead
+2. **`ComponentWidth()`/`ComponentHeight()` expressions don't work reliably** — pass actual screen dimensions as plain `Float` instead
 3. **`setUserLocalFloat("name", value)` internally prepends `"USER:"`** — register named floats as `"USER:name"` on the creation side via `addNamedFloat("USER:name", default)`
 4. **`RFloat.flush()` is essential** — break complex expression chains into intermediate flushed values to avoid buffer overflow
+5. **`setRootContentBehavior()` crashes the player** — operation ID 65 is not recognized by the player; build the document at actual screen size instead
+6. **Document size must match screen** — pass `displayMetrics.widthPixels/heightPixels` to the builder; hardcoded dimensions cause gaps on different devices
+7. **`accelY` is useless in document expressions** — raw value is ~0.55 constant (gravity); only works app-side after subtracting the rest baseline
+8. **Delegate draw calls across methods works fine** — builder objects can call DSL functions on the shared `RemoteComposeContext` as long as dimensions are plain `Float`, not `RFloat` expressions
