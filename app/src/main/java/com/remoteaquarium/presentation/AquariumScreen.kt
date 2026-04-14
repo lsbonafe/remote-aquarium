@@ -35,6 +35,7 @@ fun AquariumScreen(
         initialValue = PhysicsState(
             fish = List(SensorVariableRegistry.FISH_COUNT) { 540f to 1200f },
             fishAngles = List(SensorVariableRegistry.FISH_COUNT) { 1f to 0f },
+            fishMouthOpen = List(SensorVariableRegistry.FISH_COUNT) { 0f },
             bubbles = List(SensorVariableRegistry.BUBBLE_COUNT) { 540f to 1920f },
             food = emptyList(),
         )
@@ -113,6 +114,10 @@ private fun AquariumPlayer(
                     val (cosA, sinA) = physicsState.fishAngles[i]
                     player.setUserLocalFloat(SensorVariableRegistry.fishAngleVar(i, "C"), cosA)
                     player.setUserLocalFloat(SensorVariableRegistry.fishAngleVar(i, "S"), sinA)
+                }
+
+                for (i in physicsState.fishMouthOpen.indices) {
+                    player.setUserLocalFloat(SensorVariableRegistry.fishMouthVar(i), physicsState.fishMouthOpen[i])
                 }
 
                 for (i in physicsState.bubbles.indices) {

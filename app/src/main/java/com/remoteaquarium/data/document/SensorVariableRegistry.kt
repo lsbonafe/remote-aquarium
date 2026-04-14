@@ -22,6 +22,10 @@ object SensorVariableRegistry {
     fun fishAngleVar(index: Int, component: String) = "fish${index}A$component"
     fun docFishAngleVar(index: Int, component: String) = "${USER_PREFIX}fish${index}A$component"
 
+    // Fish mouth (18 fish x 1 value: 0.0 closed to 1.0 open)
+    fun fishMouthVar(index: Int) = "fish${index}Mouth"
+    fun docFishMouthVar(index: Int) = "${USER_PREFIX}fish${index}Mouth"
+
     // Food positions (50 food x 2 coords)
     fun foodVar(index: Int, axis: String) = "food${index}$axis"
     fun docFoodVar(index: Int, axis: String) = "${USER_PREFIX}food${index}$axis"

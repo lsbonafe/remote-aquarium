@@ -24,6 +24,7 @@ data class PhysicsObject(
 data class PhysicsState(
     val fish: List<Pair<Float, Float>>,
     val fishAngles: List<Pair<Float, Float>>,
+    val fishMouthOpen: List<Float>,
     val bubbles: List<Pair<Float, Float>>,
     val food: List<Pair<Float, Float>>,
 )
@@ -45,6 +46,7 @@ class AquariumPhysicsEngine(
     private val fishObjects = FishConfigs.create(width, height)
     private val bubbleObjects = FishConfigs.createBubbles(width, height)
 
+    private val fishMouthOpen = FloatArray(fishObjects.size)
     private var lastTimeNanos = System.nanoTime()
     private var elapsedTimeSec = 0f
 
@@ -72,8 +74,9 @@ class AquariumPhysicsEngine(
             world.clampAndBounce(fish)
         }
 
-        // Eating check
-        foodManager.checkEating(fishObjects)
+        // Eating check + mouth animation
+        val eatingFish = foodManager.checkEating(fishObjects)
+        MouthAnimation.update(fishMouthOpen, eatingFish, dt)
 
         // Fish-to-fish collision
         CollisionResolver.resolveAll(fishObjects)
@@ -89,6 +92,7 @@ class AquariumPhysicsEngine(
         return PhysicsState(
             fish = fishObjects.map { it.x to it.y },
             fishAngles = fishObjects.map { cos(it.currentAngle) to sin(it.currentAngle) },
+            fishMouthOpen = fishMouthOpen.toList(),
             bubbles = bubbleObjects.map { it.x to it.y },
             food = foodManager.positions,
         )

@@ -51,9 +51,10 @@ class FoodManager(
         }
     }
 
-    fun checkEating(fishObjects: List<PhysicsObject>) {
+    fun checkEating(fishObjects: List<PhysicsObject>): Set<Int> {
         val eaten = mutableSetOf<FoodParticle>()
-        for (fish in fishObjects) {
+        val eatingFishIndices = mutableSetOf<Int>()
+        for ((index, fish) in fishObjects.withIndex()) {
             val eatDist = fish.radius + eatDistance
             for (food in particles) {
                 if (food in eaten) continue
@@ -61,11 +62,13 @@ class FoodManager(
                 val dy = food.obj.y - fish.y
                 if (dx * dx + dy * dy < eatDist * eatDist) {
                     eaten.add(food)
+                    eatingFishIndices.add(index)
                     break
                 }
             }
         }
         particles.removeAll(eaten)
+        return eatingFishIndices
     }
 
     fun updatePositions(dt: Float) {

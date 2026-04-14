@@ -2,7 +2,7 @@
 
 An interactive neon aquarium Android app showcasing **AndroidX Remote Compose** — a server-driven UI framework that serializes drawing operations into compact binary documents rendered natively on Android.
 
-18 neon fish swim with real physics (gravity, momentum, drag, wall bouncing, fish-to-fish collision). Tap to drop food — fish rotate to face their target, chase it down, and eat it. After eating they settle to face left or right based on their last heading. Bubbles rise and recycle. Seaweed sways. Waves ripple. Tilt your phone and everything reacts. Leave it still for 5 seconds and fish begin idle swimming on their own.
+18 neon fish swim with real physics (gravity, momentum, drag, wall bouncing, fish-to-fish collision). Tap to drop food — fish rotate to face their target, chase it down, open their mouth to swallow it, and settle to face left or right based on their last heading. Bubbles rise and recycle. Seaweed sways. Waves ripple. Tilt your phone and everything reacts. Leave it still for 5 seconds and fish begin idle swimming on their own.
 
 https://github.com/user-attachments/assets/739a3bef-7ff4-4238-aa39-7042a449c7c3
 
@@ -70,7 +70,7 @@ This split is the point: a server can redesign every visual — fish shapes, col
 │  │  + SensorMapper   │  │ drag, collision,   │  │  UI              │ │
 │  │  + EMA smoothing  │──▶ wall bounce,       │  │                  │ │
 │  │                   │  │ idle swimming,     │──▶ setUserLocalFloat │ │
-│  │  Flow<SensorData> │  │ food, rotation     │  │ pushes 185 floats│ │
+│  │  Flow<SensorData> │  │ food, rotation     │  │ pushes 203 floats│ │
 │  └───────────────────┘  │ Flow<PhysicsState> │  │ per frame        │ │
 │                         └────────────────────┘  └──────────────────┘ │
 │                                                                      │
@@ -162,6 +162,7 @@ This split is the point: a server can redesign every visual — fish shapes, col
 | `FacingDirection` | No | Fish heading: face food, or settle to nearest side (left/right) |
 | `BubblePhysics` | No | Bubble lifecycle: rise with buoyancy, respawn at bottom |
 | `FoodManager` | No | Spawns food on tap, tracks particles, handles eating |
+| `MouthAnimation` | No | Mouth open/close: snap open on eat, gradually close |
 | `DeviceSensorDataProvider` | No | Reads accelerometer via `SensorManager` |
 | `SensorDataMapper` | No | Normalizes raw sensor values to -1..1 with EMA smoothing |
 | Domain models & repository | No | Clean Architecture contracts |
@@ -183,11 +184,12 @@ SensorDataMapper  ───────────────  normalizes to -
     │       │                        FacingDirection (heading toward food)
     │       │                        BubblePhysics (rise + respawn)
     │       │                        FoodManager (spawn, sink, eat)
+    │       │                        MouthAnimation (open on eat, close)
     │       ▼
-    │    PhysicsState (18 fish + angles + 50 food + 6 bubbles)
+    │    PhysicsState (18 fish + angles + mouths + 50 food + 6 bubbles)
     │       │
     │       ▼
-    │    setUserLocalFloat("fish0X", 423f)  ──  185 floats
+    │    setUserLocalFloat("fish0X", 423f)  ──  203 floats
     │    setUserLocalFloat("fish0AC", 0.9f)     pushed per frame
     │
     └──▶ setUserLocalFloat("accelX", 0.3f)  ──  for waves + seaweed

@@ -84,6 +84,7 @@ fun RemoteComposeContext.rotatedFish(
     finColor: Int,
     cosA: RFloat,
     sinA: RFloat,
+    mouthOpen: RFloat,
     eyeColor: Int = NeonPalette.WHITE,
     pupilColor: Int = NeonPalette.BLACK,
 ) {
@@ -104,6 +105,15 @@ fun RemoteComposeContext.rotatedFish(
     val fw = (cos2 * fhw + sin2 * fhh).flush()
     val fh = (cos2 * fhh + sin2 * fhw).flush()
     oval(finCx - fw, finCy - fh, finCx + fw, finCy + fh, color = finColor)
+
+    // Mouth: oval at front of fish, height scales with mouthOpen (0 = invisible, 1 = open)
+    val mouthOx = bodyWidth * 0.65f
+    val mouthOy = 0f
+    val mcx = (cx + cosA * mouthOx - sinA * mouthOy).flush()
+    val mcy = (cy + sinA * mouthOx + cosA * mouthOy).flush()
+    val mouthW = bodyWidth * 0.1f
+    val mouthH = (mouthOpen * bodyHeight * 0.35f).flush()
+    oval(mcx - mouthW, mcy - mouthH, mcx + mouthW, mcy + mouthH, color = NeonPalette.BLACK)
 
     // Eye: rotate offset (bodyWidth*0.5, -bodyHeight*0.3)
     val eyeOx = bodyWidth * 0.5f

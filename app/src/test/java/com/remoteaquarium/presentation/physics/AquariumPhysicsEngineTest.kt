@@ -210,7 +210,7 @@ class AquariumPhysicsEngineTest {
         val engine = AquariumPhysicsEngine(1080f, 2400f)
         val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
 
-        var state = PhysicsState(emptyList(), emptyList(), emptyList(), emptyList())
+        var state = PhysicsState(emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
         for (i in 0 until 500) {
             state = engine.update(sensor)
             Thread.sleep(15)
@@ -477,5 +477,63 @@ class AquariumPhysicsEngineTest {
         BubblePhysics.update(bubble, 0.5f, 0f, 0.016f, world)
 
         assertTrue(bubble.vx > 0f, "Bubble should respond to tilt, vx=${bubble.vx}")
+    }
+
+    // === Mouth animation tests ===
+
+    @Test
+    fun `mouth opens when fish eats food`() {
+        val engine = AquariumPhysicsEngine(1080f, 2400f)
+        val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
+
+        // Spawn food right on top of first fish (0.3 * 1080 = 324, 0.25 * 2400 = 600)
+        engine.feed(324f, 600f)
+
+        var state = engine.update(sensor)
+        var mouthOpened = false
+        for (i in 0 until 100) {
+            state = engine.update(sensor)
+            Thread.sleep(16)
+            if (state.fishMouthOpen.any { it > 0f }) {
+                mouthOpened = true
+                break
+            }
+        }
+
+        assertTrue(mouthOpened, "At least one fish mouth should open after eating")
+    }
+
+    @Test
+    fun `mouth closes gradually after eating`() {
+        val engine = AquariumPhysicsEngine(1080f, 2400f)
+        val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
+
+        // Spawn food and wait until a mouth opens
+        engine.feed(324f, 600f)
+        var state = engine.update(sensor)
+        for (i in 0 until 100) {
+            state = engine.update(sensor)
+            Thread.sleep(16)
+            if (state.fishMouthOpen.any { it > 0f }) break
+        }
+
+        // Now run more frames without food — mouth should decay toward 0
+        for (i in 0 until 30) {
+            state = engine.update(sensor)
+            Thread.sleep(16)
+        }
+
+        val maxMouth = state.fishMouthOpen.max()
+        assertTrue(maxMouth < 0.5f, "Mouth should have closed after ~0.5s, max=$maxMouth")
+    }
+
+    @Test
+    fun `mouth stays closed when not eating`() {
+        val engine = AquariumPhysicsEngine(1080f, 2400f)
+        val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
+
+        val state = engine.update(sensor)
+
+        assertTrue(state.fishMouthOpen.all { it == 0f }, "All mouths should be closed with no food")
     }
 }

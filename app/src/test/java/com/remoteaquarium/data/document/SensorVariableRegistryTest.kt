@@ -39,4 +39,14 @@ class SensorVariableRegistryTest {
         assertEquals("USER:fish0AS", SensorVariableRegistry.docFishAngleVar(0, "S"))
         assertEquals("USER:fish17AC", SensorVariableRegistry.docFishAngleVar(17, "C"))
     }
+
+    @Test
+    fun `fishMouthVar generates correct key`() {
+        assertEquals("fish3Mouth", SensorVariableRegistry.fishMouthVar(3))
+    }
+
+    @Test
+    fun `docFishMouthVar includes USER prefix`() {
+        assertEquals("USER:fish0Mouth", SensorVariableRegistry.docFishMouthVar(0))
+    }
 }
