@@ -33,13 +33,18 @@ The tradeoff is real: Android only, alpha stability, no component system, no vis
 
 ## Why an aquarium?
 
-The aquarium uses capabilities that are specific to Remote Compose's drawing-operation level:
+The aquarium uses capabilities that are specific to Remote Compose's drawing-operation level. The architecture splits into two halves:
 
-- **Seaweed** sways using `sin(time * speed + phase)` expressions that also reference `accelX` — the sway reacts to phone tilt in real-time. A Lottie file could animate seaweed, but it couldn't make it respond to live sensor data.
-- **Fish rotation** uses `cos²/sin²` dimension swapping in RFloat expressions, driven by angle floats the physics engine pushes 60 times per second. No pre-baked animation can depend on runtime physics output.
-- **Waves** ripple with time-based sin expressions that shift with accelerometer tilt.
+**Remote (in the binary document — changeable from a server):**
+- **Seaweed** sways using `sin(time * speed + phase)` expressions that reference `accelX` — the animation formula itself reacts to live sensor data. A Lottie file could animate seaweed, but it couldn't make it respond to phone tilt.
+- **Waves** ripple with time-based sin expressions that shift with accelerometer input.
+- **Fish rendering** uses `cos²/sin²` RFloat expressions to rotate body parts based on named angle floats — the document defines *how* a fish looks at any angle without knowing *why* it's turning.
+- **Food particles**, bubble shapes, neon colors, fish sizes — all visual decisions live in the document.
 
-All of this lives in the binary document — changeable from a server without an app update. The app only provides the physics simulation and sensor data; the entire visual scene, including its animation behavior, is remote.
+**Local (baked into the APK):**
+- Physics simulation (gravity, drag, collision, food chasing, idle swimming) runs app-side and pushes 185 named floats per frame to the player.
+
+This split is the point: a server can redesign every visual — fish shapes, colors, animation formulas, how rotation looks — without an app update. The app just provides positions and angles. Swap the document and you get a completely different scene with the same physics.
 
 ## Architecture
 
