@@ -383,4 +383,96 @@ class AquariumPhysicsEngineTest {
             assertEquals(1f, magnitude, 0.01f, "cos²+sin² should be ~1, got $magnitude")
         }
     }
+
+    // === FishMotion tests ===
+
+    @Test
+    fun `chasing food applies attraction and dampened tilt`() {
+        val world = PhysicsWorld(1080f, 2400f)
+        val foodManager = FoodManager(world)
+        val fish = PhysicsObject(x = 500f, y = 500f, gravityScale = 600f)
+
+        foodManager.spawn(100f, 500f, 0f)
+        val food = foodManager.findNearestTarget(fish)!!
+
+        FishMotion.applyForces(fish, 0.5f, 0f, 0.016f, 0f, 0f, food, foodManager)
+
+        // Fish should be pulled toward food (left), so vx < 0
+        assertTrue(fish.vx < 0f, "Fish should be attracted toward food, vx=${fish.vx}")
+        // Position should have integrated
+        assertTrue(fish.x < 500f, "Fish should have moved toward food")
+    }
+
+    @Test
+    fun `idle swimming adds sinusoidal force`() {
+        val world = PhysicsWorld(1080f, 2400f)
+        val foodManager = FoodManager(world)
+        val fish = PhysicsObject(x = 500f, y = 500f, swimForce = 80f, swimSpeedX = 0.7f)
+
+        FishMotion.applyForces(fish, 0f, 0f, 0.016f, 1f, 5f, null, foodManager)
+
+        // With idleBlend=1 and elapsedTime=5, sinusoidal force should change velocity
+        val moved = fish.vx != 0f || fish.vy != 0f
+        assertTrue(moved, "Idle swimming should produce velocity")
+    }
+
+    @Test
+    fun `normal tilt applies full gravity scale`() {
+        val world = PhysicsWorld(1080f, 2400f)
+        val foodManager = FoodManager(world)
+        val fish = PhysicsObject(x = 500f, y = 500f, gravityScale = 1000f)
+
+        FishMotion.applyForces(fish, 0.5f, 0f, 0.016f, 0f, 0f, null, foodManager)
+
+        // Expected vx contribution: tiltX * gravityScale * dt = 0.5 * 1000 * 0.016 = 8.0
+        // After drag: 8.0 * 0.96 = 7.68
+        assertTrue(fish.vx > 7f, "Tilt should apply full gravity scale, vx=${fish.vx}")
+    }
+
+    @Test
+    fun `drag and integration happen in all modes`() {
+        val world = PhysicsWorld(1080f, 2400f)
+        val foodManager = FoodManager(world)
+        val fish = PhysicsObject(x = 500f, y = 500f, vx = 100f, vy = 0f, drag = 0.96f)
+
+        FishMotion.applyForces(fish, 0f, 0f, 0.016f, 0f, 0f, null, foodManager)
+
+        // Velocity should be dampened by drag
+        assertTrue(fish.vx < 100f, "Drag should reduce velocity, vx=${fish.vx}")
+        // Position should be updated
+        assertTrue(fish.x > 500f, "Position should integrate forward")
+    }
+
+    // === BubblePhysics tests ===
+
+    @Test
+    fun `bubble floats upward with buoyancy`() {
+        val world = PhysicsWorld(1080f, 2400f)
+        val bubble = PhysicsObject(x = 500f, y = 1200f, vy = 0f, drag = 0.99f, gravityScale = 150f)
+
+        BubblePhysics.update(bubble, 0f, 0f, 0.016f, world)
+
+        assertTrue(bubble.vy < 0f, "Buoyancy should push bubble upward, vy=${bubble.vy}")
+    }
+
+    @Test
+    fun `bubble respawns at bottom when reaching top`() {
+        val world = PhysicsWorld(1080f, 2400f)
+        val bubble = PhysicsObject(x = 500f, y = world.margin, vy = -60f, drag = 0.99f, gravityScale = 150f)
+
+        BubblePhysics.update(bubble, 0f, 0f, 0.016f, world)
+
+        assertTrue(bubble.y > 2000f, "Bubble should respawn near bottom, y=${bubble.y}")
+        assertEquals(0f, bubble.vx, "Horizontal velocity should reset")
+    }
+
+    @Test
+    fun `bubble responds to tilt`() {
+        val world = PhysicsWorld(1080f, 2400f)
+        val bubble = PhysicsObject(x = 500f, y = 1200f, vx = 0f, drag = 0.99f, gravityScale = 150f)
+
+        BubblePhysics.update(bubble, 0.5f, 0f, 0.016f, world)
+
+        assertTrue(bubble.vx > 0f, "Bubble should respond to tilt, vx=${bubble.vx}")
+    }
 }
