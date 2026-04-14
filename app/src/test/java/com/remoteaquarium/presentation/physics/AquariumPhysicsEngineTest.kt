@@ -268,28 +268,84 @@ class AquariumPhysicsEngineTest {
     }
 
     @Test
-    fun `fish returns to facing right when no food`() {
+    fun `fish settles to face left after chasing food to the left`() {
         val engine = AquariumPhysicsEngine(1080f, 2400f)
         val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
 
-        // Spawn food, let fish chase and eat it
-        engine.feed(324f, 600f)
-        for (i in 0 until 100) {
-            engine.update(sensor)
-            Thread.sleep(16)
-        }
-
-        // Now run without food — angles should decay toward 0
+        // Keep spawning food to the left until fish turn
         var state = engine.update(sensor)
-        for (i in 0 until 100) {
+        for (i in 0 until 200) {
+            if (state.food.isEmpty()) engine.feed(10f, 600f)
             state = engine.update(sensor)
             Thread.sleep(16)
         }
 
-        // All fish should be close to facing right (cosA near 1, sinA near 0)
+        // Stop spawning food, keep tilt active so idle doesn't kick in
+        val activeSensor = SensorData(accelX = 0.3f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
+        for (i in 0 until 100) {
+            state = engine.update(activeSensor)
+            Thread.sleep(16)
+        }
+
+        // Fish that were leaning left should settle to fully face left (cosA ≈ -1)
+        // Fish that were leaning right should settle to fully face right (cosA ≈ 1)
+        // All fish should be facing cleanly left or right (abs(cosA) near 1, sinA near 0)
         for ((cosA, sinA) in state.fishAngles) {
-            assertTrue(cosA > 0.8f, "Fish should face right, cosA=$cosA")
-            assertTrue(abs(sinA) < 0.6f, "Fish sinA should be near 0, sinA=$sinA")
+            assertTrue(abs(cosA) > 0.7f,
+                "Fish should face left or right, not diagonal. cosA=$cosA")
+            assertTrue(abs(sinA) < 0.75f,
+                "Fish should not face up/down. sinA=$sinA")
+        }
+    }
+
+    @Test
+    fun `fish facing direction depends on lean after food`() {
+        val engine = AquariumPhysicsEngine(1080f, 2400f)
+        val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
+
+        // Spawn food to the LEFT — fish will lean left
+        var state = engine.update(sensor)
+        for (i in 0 until 200) {
+            if (state.food.isEmpty()) engine.feed(10f, 600f)
+            state = engine.update(sensor)
+            Thread.sleep(16)
+        }
+
+        // Let food be eaten, run with active tilt
+        val activeSensor = SensorData(accelX = 0.3f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
+        for (i in 0 until 100) {
+            state = engine.update(activeSensor)
+            Thread.sleep(16)
+        }
+
+        // Some fish should be facing left (those that were leaning left)
+        val facingLeft = state.fishAngles.count { (cosA, _) -> cosA < -0.5f }
+        assertTrue(facingLeft > 0, "Some fish should settle facing left after chasing left food")
+    }
+
+    @Test
+    fun `fish reverts to facing right during idle swimming`() {
+        val engine = AquariumPhysicsEngine(1080f, 2400f)
+        val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
+
+        // Feed and let fish chase to build up angles
+        var state = engine.update(sensor)
+        for (i in 0 until 200) {
+            if (state.food.isEmpty()) engine.feed(10f, 600f)
+            state = engine.update(sensor)
+            Thread.sleep(16)
+        }
+
+        // Hold still long enough for idle to kick in (5s threshold + 2s ramp)
+        for (i in 0 until 500) {
+            state = engine.update(sensor)
+            Thread.sleep(16)
+        }
+
+        // After idle swimming activates, all fish should revert to facing right
+        for ((cosA, sinA) in state.fishAngles) {
+            assertTrue(cosA > 0.8f, "Fish should face right during idle, cosA=$cosA")
+            assertTrue(abs(sinA) < 0.6f, "Fish sinA should be near 0 during idle, sinA=$sinA")
         }
     }
 

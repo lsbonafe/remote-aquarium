@@ -2,7 +2,6 @@ package com.remoteaquarium.presentation.physics
 
 import com.remoteaquarium.domain.model.SensorData
 import kotlin.math.PI
-import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -58,8 +57,6 @@ class AquariumPhysicsEngine(
         private const val IDLE_SWIM_Y_FORCE_SCALE = 0.6f
         private const val NANOS_TO_SEC = 1_000_000_000f
         private const val MAX_DT = 0.05f
-        private const val CHASE_TURN_SPEED = 8f
-        private const val IDLE_TURN_SPEED = 3f
     }
 
     fun update(sensor: SensorData): PhysicsState {
@@ -148,15 +145,6 @@ class AquariumPhysicsEngine(
         fish.x += fish.vx * dt
         fish.y += fish.vy * dt
 
-        val targetAngle = if (foodTarget != null) {
-            atan2(
-                (foodTarget.obj.y - fish.y).toDouble(),
-                (foodTarget.obj.x - fish.x).toDouble(),
-            ).toFloat()
-        } else {
-            0f
-        }
-        val turnSpeed = if (foodTarget != null) CHASE_TURN_SPEED else IDLE_TURN_SPEED
-        fish.currentAngle = lerpAngle(fish.currentAngle, targetAngle, (turnSpeed * dt).coerceAtMost(1f))
+        FacingDirection.update(fish, foodTarget, idleBlend, dt)
     }
 }
