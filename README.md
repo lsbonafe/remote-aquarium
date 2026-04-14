@@ -2,7 +2,9 @@
 
 An interactive neon aquarium Android app showcasing **AndroidX Remote Compose** — a server-driven UI framework that serializes drawing operations into compact binary documents rendered natively on Android.
 
-18 neon fish swim with physics-based movement (gravity, momentum, drag, wall bouncing, fish-to-fish collision). Bubbles rise and recycle. Seaweed sways. Waves ripple. Tilt your phone and everything reacts — fish drift toward the lowest point, bounce off screen edges, and settle naturally.
+18 neon fish swim with real physics (gravity, momentum, drag, wall bouncing, fish-to-fish collision). Tap to drop food — fish rotate to face their target, chase it down, and eat it. After eating they settle to face left or right based on their last heading. Bubbles rise and recycle. Seaweed sways. Waves ripple. Tilt your phone and everything reacts. Leave it still for 5 seconds and fish begin idle swimming on their own.
+
+https://github.com/user-attachments/assets/739a3bef-7ff4-4238-aa39-7042a449c7c3
 
 ## What is Remote Compose?
 
@@ -33,8 +35,8 @@ Instead of JSON or XML, it captures **actual drawing operations** (ovals, circle
 │  │  Accelerometer    │  │ Per-fish gravity,  │  │  REMOTE COMPOSE  │ │
 │  │  + SensorMapper   │  │ drag, collision,   │  │  UI              │ │
 │  │  + EMA smoothing  │──▶ wall bounce,       │  │                  │ │
-│  │                   │  │ idle swimming      │──▶ setUserLocalFloat │ │
-│  │  Flow<SensorData> │  │                    │  │ pushes 28 floats │ │
+│  │                   │  │ idle swimming,     │──▶ setUserLocalFloat │ │
+│  │  Flow<SensorData> │  │ food, rotation     │  │ pushes 185 floats│ │
 │  └───────────────────┘  │ Flow<PhysicsState> │  │ per frame        │ │
 │                         └────────────────────┘  └──────────────────┘ │
 │                                                                      │
@@ -84,12 +86,12 @@ Instead of JSON or XML, it captures **actual drawing operations** (ovals, circle
 │  │  │ Delegates to builders   │  │  fish          │                 │  │
 │  │  └───────────┬────────────┘  └──────────────┘                 │  │
 │  │              │                                                 │  │
-│  │    ┌─────────┼──────────┬──────────┬──────────┐               │  │
-│  │    ▼         ▼          ▼          ▼          ▼               │  │
-│  │  ┌──────┐ ┌──────┐ ┌────────┐ ┌───────┐ ┌────────┐          │  │
-│  │  │Water │ │Sand  │ │Seaweed │ │ Fish  │ │Bubble  │          │  │
-│  │  │Layer │ │Floor │ │Builder │ │Builder│ │Builder │          │  │
-│  │  └──────┘ └──────┘ └────────┘ └───────┘ └────────┘          │  │
+│  │    ┌─────────┼──────────┬──────────┬──────────┬────────┐      │  │
+│  │    ▼         ▼          ▼          ▼          ▼        ▼      │  │
+│  │  ┌──────┐ ┌──────┐ ┌────────┐ ┌───────┐ ┌────────┐ ┌──────┐│  │
+│  │  │Water │ │Sand  │ │Seaweed │ │ Fish  │ │Bubble  │ │ Food ││  │
+│  │  │Layer │ │Floor │ │Builder │ │Builder│ │Builder │ │Builder││  │
+│  │  └──────┘ └──────┘ └────────┘ └───────┘ └────────┘ └──────┘│  │
 │  │                                                                │  │
 │  │  Supporting: NeonPalette (colors), AquariumLayout (constants)  │  │
 │  │                                                                │  │
@@ -116,12 +118,16 @@ Instead of JSON or XML, it captures **actual drawing operations** (ovals, circle
 | `RemoteComposePlayer` | **Yes** | Android View that renders binary documents |
 | `AquariumDocumentBuilder` | **Yes** | Creates the binary document using `RemoteComposeContext` |
 | `DrawingDsl` | **Yes** | Declarative extension functions (`fish()`, `circle()`, `line()`, etc.) over imperative RC API |
-| `WaterLayerBuilder`, `FishBuilder`, etc. | **Yes** | Write drawing ops + expressions into the binary buffer |
+| `WaterLayerBuilder`, `FishBuilder`, `FoodBuilder`, etc. | **Yes** | Write drawing ops + expressions into the binary buffer |
 | `NeonPalette` | **Yes** | Named color constants used by builders |
 | `SensorVariableRegistry` | **Bridge** | Named float keys shared between creation (`USER:accelX`) and player (`accelX`) |
 | `AquariumScreen` | No | Jetpack Compose UI that hosts the `RemoteComposePlayer` via `AndroidView` |
 | `AquariumViewModel` | No | Loads document, runs physics, exposes flows |
-| `AquariumPhysicsEngine` | No | App-side physics: gravity, drag, collision, idle swimming |
+| `AquariumPhysicsEngine` | No | Orchestrates per-frame physics pipeline via delegation |
+| `FishMotion` | No | Fish forces: chase food, idle swim, or follow tilt |
+| `FacingDirection` | No | Fish heading: face food, settle to nearest side, or return to default |
+| `BubblePhysics` | No | Bubble lifecycle: rise with buoyancy, respawn at bottom |
+| `FoodManager` | No | Spawns food on tap, tracks particles, handles eating |
 | `DeviceSensorDataProvider` | No | Reads accelerometer via `SensorManager` |
 | `SensorDataMapper` | No | Normalizes raw sensor values to -1..1 with EMA smoothing |
 | Domain models & repository | No | Clean Architecture contracts |
@@ -138,15 +144,17 @@ SensorManager.onSensorChanged()
     ▼
 SensorDataMapper  ───────────────  normalizes to -1..1, EMA smoothing
     │
-    ├──▶ AquariumPhysicsEngine   ──  per-fish: gravity from tilt, drag,
-    │       │                        wall bounce, fish-to-fish collision,
-    │       │                        idle swimming when still for 5s
+    ├──▶ AquariumPhysicsEngine   ──  delegates to:
+    │       │                        FishMotion (chase/idle/tilt forces)
+    │       │                        FacingDirection (heading toward food)
+    │       │                        BubblePhysics (rise + respawn)
+    │       │                        FoodManager (spawn, sink, eat)
     │       ▼
-    │    PhysicsState (18 fish + 6 bubble positions)
+    │    PhysicsState (18 fish + angles + 50 food + 6 bubbles)
     │       │
     │       ▼
-    │    setUserLocalFloat("fish0X", 423f)  ──  28 position floats
-    │    setUserLocalFloat("fish0Y", 891f)      pushed per frame
+    │    setUserLocalFloat("fish0X", 423f)  ──  185 floats
+    │    setUserLocalFloat("fish0AC", 0.9f)     pushed per frame
     │
     └──▶ setUserLocalFloat("accelX", 0.3f)  ──  for waves + seaweed
             │

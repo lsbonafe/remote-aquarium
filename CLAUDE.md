@@ -1,6 +1,6 @@
 # RemoteAquarium
 
-Interactive neon aquarium app showcasing AndroidX Remote Compose (server-driven UI). The entire visual scene is rendered from a Remote Compose binary document. 18 fish and 6 bubbles react to phone tilt with real physics (gravity, momentum, drag, wall bouncing, fish-to-fish collision, idle swimming).
+Interactive neon aquarium app showcasing AndroidX Remote Compose (server-driven UI). The entire visual scene is rendered from a Remote Compose binary document. 18 fish and 6 bubbles react to phone tilt with real physics (gravity, momentum, drag, wall bouncing, fish-to-fish collision, idle swimming). Tap to drop food — fish rotate to face their target, chase it, and eat it.
 
 ## Build & Test
 
@@ -31,26 +31,35 @@ com.remoteaquarium/
 │   ├── repository/             # AquariumRepositoryImpl
 │   └── document/               # Remote Compose binary document creation
 │       ├── AquariumDocumentBuilder   # Orchestrator — registers named floats, layers builders
-│       ├── DrawingDsl                # Declarative extensions: fish(), circle(), line(), rect(), oval()
+│       ├── DrawingDsl                # Declarative extensions: fish(), rotatedFish(), circle(), line(), rect(), oval()
 │       ├── NeonPalette               # Named color constants (CYAN, MAGENTA, HOT_PINK, etc.)
 │       ├── AquariumLayout            # Shared layout constants (sand top fraction)
 │       ├── WaterLayerBuilder         # Dark gradient + animated neon waves
-│       ├── FishBuilder               # 18 neon fish at physics-driven positions
+│       ├── FishBuilder               # 18 neon fish with rotation at physics-driven positions
 │       ├── BubbleBuilder             # 6 neon bubbles at physics-driven positions
+│       ├── FoodBuilder               # Up to 50 food particles with glow (tap-to-feed)
 │       ├── SeaweedBuilder            # 8 swaying stalks (spec/resolve pattern)
 │       ├── SandFloorBuilder          # Dark floor with neon pebbles and coral (spec/resolve pattern)
 │       └── SensorVariableRegistry    # Named float key constants (USER: prefix convention)
 ├── presentation/               # Android UI layer
 │   ├── AquariumActivity              # Fullscreen immersive mode, @AndroidEntryPoint
 │   ├── AquariumViewModel             # Loads document, runs physics, exposes flows
-│   ├── AquariumScreen                # Hosts RemoteComposePlayer, pushes 28 named floats per frame
+│   ├── AquariumScreen                # Hosts RemoteComposePlayer, pushes 185 named floats per frame
 │   ├── AquariumUiState               # Sealed interface: Loading, Ready, Error
 │   ├── sensor/                       # Accelerometer integration
 │   │   ├── SensorDataProvider        # Interface: Flow<SensorData>, start(), stop()
 │   │   ├── DeviceSensorDataProvider  # SensorManager + TYPE_ACCELEROMETER listener
 │   │   └── SensorDataMapper          # Normalizes raw values to -1..1 with EMA smoothing
 │   └── physics/                      # App-side physics simulation
-│       └── AquariumPhysicsEngine     # Gravity, drag, wall bounce, collision, idle swimming
+│       ├── AquariumPhysicsEngine     # Orchestrates per-frame pipeline via delegation
+│       ├── FishMotion                # Fish forces: chase food, idle swim, or follow tilt
+│       ├── FacingDirection           # Fish heading: face food, settle to side, or return to default
+│       ├── BubblePhysics             # Bubble lifecycle: rise with buoyancy, respawn at bottom
+│       ├── FoodManager               # Spawns food on tap, tracks particles, handles eating
+│       ├── IdleDetector              # Detects no-tilt for 5s, blends to idle swimming
+│       ├── CollisionResolver         # Fish-to-fish collision separation + velocity exchange
+│       ├── PhysicsWorld              # World boundaries, clamp and bounce
+│       └── FishConfigs               # Initial positions, drag, gravity per fish tier
 └── di/                         # Hilt DI modules
     ├── AppModule                     # Binds repository, sensor provider, provides SensorManager
     └── DataModule                    # Binds data source (swap point: mock → server)
@@ -59,14 +68,15 @@ com.remoteaquarium/
 ## Remote vs Local Boundary
 
 **Remote (binary document — can change from server without app update):**
-- All visuals: fish shapes/colors/sizes, background, sand, seaweed, bubbles, waves
+- All visuals: fish shapes/colors/sizes, background, sand, seaweed, bubbles, waves, food particles
 - Animation expressions: seaweed sway (sin/cos + time), wave animation
+- Fish rotation rendering (rotatedFish DSL using cos/sin named floats)
 - Where to draw elements relative to named float positions
 
 **Local (baked into APK):**
-- Physics simulation (AquariumPhysicsEngine): gravity, drag, bounce, collision, idle swimming
+- Physics simulation: FishMotion (forces), FacingDirection (heading), BubblePhysics (lifecycle), FoodManager (spawn/eat)
 - Sensor pipeline: accelerometer reading, normalization, smoothing
-- The bridge: `setUserLocalFloat()` pushing 28 values per frame to the player
+- The bridge: `setUserLocalFloat()` pushing 185 values per frame to the player
 - Architecture glue: Hilt, ViewModel, Activity, Compose hosting
 
 **Contract between remote and local:** string-named float variables (`USER:` prefix on creation side, bare name on player side). Document declares them with `addNamedFloat()`, app pushes with `setUserLocalFloat()`. No schema, no type safety — just string matching.
