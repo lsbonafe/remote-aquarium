@@ -324,11 +324,11 @@ class AquariumPhysicsEngineTest {
     }
 
     @Test
-    fun `fish reverts to facing right during idle swimming`() {
+    fun `fish keeps settled direction during idle swimming`() {
         val engine = AquariumPhysicsEngine(1080f, 2400f)
         val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
 
-        // Feed and let fish chase to build up angles
+        // Feed to the left and let fish chase
         var state = engine.update(sensor)
         for (i in 0 until 200) {
             if (state.food.isEmpty()) engine.feed(10f, 600f)
@@ -342,10 +342,13 @@ class AquariumPhysicsEngineTest {
             Thread.sleep(16)
         }
 
-        // After idle swimming activates, all fish should revert to facing right
+        // Fish should still be facing cleanly left or right (not diagonal)
+        // but NOT forced to face right — they keep their settled direction
         for ((cosA, sinA) in state.fishAngles) {
-            assertTrue(cosA > 0.8f, "Fish should face right during idle, cosA=$cosA")
-            assertTrue(abs(sinA) < 0.6f, "Fish sinA should be near 0 during idle, sinA=$sinA")
+            assertTrue(abs(cosA) > 0.7f,
+                "Fish should face left or right, cosA=$cosA")
+            assertTrue(abs(sinA) < 0.75f,
+                "Fish should not face up/down, sinA=$sinA")
         }
     }
 

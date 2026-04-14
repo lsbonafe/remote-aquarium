@@ -53,7 +53,7 @@ com.remoteaquarium/
 │   └── physics/                      # App-side physics simulation
 │       ├── AquariumPhysicsEngine     # Orchestrates per-frame pipeline via delegation
 │       ├── FishMotion                # Fish forces: chase food, idle swim, or follow tilt
-│       ├── FacingDirection           # Fish heading: face food, settle to side, or return to default
+│       ├── FacingDirection           # Fish heading: face food, or settle to nearest side (left/right)
 │       ├── BubblePhysics             # Bubble lifecycle: rise with buoyancy, respawn at bottom
 │       ├── FoodManager               # Spawns food on tap, tracks particles, handles eating
 │       ├── IdleDetector              # Detects no-tilt for 5s, blends to idle swimming

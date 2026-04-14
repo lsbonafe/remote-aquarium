@@ -159,7 +159,7 @@ This split is the point: a server can redesign every visual — fish shapes, col
 | `AquariumViewModel` | No | Loads document, runs physics, exposes flows |
 | `AquariumPhysicsEngine` | No | Orchestrates per-frame physics pipeline via delegation |
 | `FishMotion` | No | Fish forces: chase food, idle swim, or follow tilt |
-| `FacingDirection` | No | Fish heading: face food, settle to nearest side, or return to default |
+| `FacingDirection` | No | Fish heading: face food, or settle to nearest side (left/right) |
 | `BubblePhysics` | No | Bubble lifecycle: rise with buoyancy, respawn at bottom |
 | `FoodManager` | No | Spawns food on tap, tracks particles, handles eating |
 | `DeviceSensorDataProvider` | No | Reads accelerometer via `SensorManager` |

@@ -9,8 +9,7 @@ import kotlin.math.cos
  *
  * Behavior rules:
  *  1. Chasing food    → face toward the food (full 360°)
- *  2. After eating    → settle to left or right, whichever is closer to the last heading
- *  3. Idle swimming   → gradually return to facing right (the default pose)
+ *  2. No food         → settle to left or right, whichever is closer to the last heading
  */
 object FacingDirection {
 
@@ -19,7 +18,6 @@ object FacingDirection {
 
     private const val CHASE_SPEED = 8f
     private const val SETTLE_SPEED = 3f
-    private const val IDLE_SPEED = 3f
     private const val LEAN_DEADZONE = 0.1f
 
     fun update(
@@ -30,8 +28,7 @@ object FacingDirection {
     ) {
         val (targetAngle, turnSpeed) = when {
             foodTarget != null -> faceTowardFood(fish, foodTarget)
-            idleBlend > 0f    -> returnToDefault(idleBlend)
-            else              -> settleToNearestSide(fish)
+            else               -> settleToNearestSide(fish)
         }
 
         fish.currentAngle = lerpAngle(fish.currentAngle, targetAngle, (turnSpeed * dt).coerceAtMost(1f))
@@ -53,9 +50,5 @@ object FacingDirection {
             else                  -> if (fish.swimPhase.toInt() % 2 == 0) FACE_RIGHT else FACE_LEFT
         }
         return target to SETTLE_SPEED
-    }
-
-    private fun returnToDefault(idleBlend: Float): Pair<Float, Float> {
-        return FACE_RIGHT to IDLE_SPEED * idleBlend
     }
 }
