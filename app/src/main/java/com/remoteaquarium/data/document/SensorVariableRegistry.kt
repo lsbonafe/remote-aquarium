@@ -18,7 +18,11 @@ object SensorVariableRegistry {
     fun bubbleVar(index: Int, axis: String) = "bubble${index}$axis"
     fun docBubbleVar(index: Int, axis: String) = "${USER_PREFIX}bubble${index}$axis"
 
-    // Food positions (3 food x 2 coords)
+    // Fish rotation (18 fish x 2 values: cos, sin)
+    fun fishAngleVar(index: Int, component: String) = "fish${index}A$component"
+    fun docFishAngleVar(index: Int, component: String) = "${USER_PREFIX}fish${index}A$component"
+
+    // Food positions (50 food x 2 coords)
     fun foodVar(index: Int, axis: String) = "food${index}$axis"
     fun docFoodVar(index: Int, axis: String) = "${USER_PREFIX}food${index}$axis"
 

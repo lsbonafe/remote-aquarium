@@ -4,6 +4,7 @@ import com.remoteaquarium.domain.model.SensorData
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.sqrt
 
@@ -209,7 +210,7 @@ class AquariumPhysicsEngineTest {
         val engine = AquariumPhysicsEngine(1080f, 2400f)
         val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
 
-        var state = PhysicsState(emptyList(), emptyList(), emptyList())
+        var state = PhysicsState(emptyList(), emptyList(), emptyList(), emptyList())
         for (i in 0 until 500) {
             state = engine.update(sensor)
             Thread.sleep(15)
@@ -220,5 +221,110 @@ class AquariumPhysicsEngineTest {
         val dx = abs(state.fish[0].first - initialX)
         assertTrue(dx > 0.1f || abs(state.fish[0].second - 2400f * 0.25f) > 0.1f,
             "Fish should move during idle")
+    }
+
+    // === Angle smoothing tests ===
+
+    @Test
+    fun `lerpAngle wraps correctly across PI boundary`() {
+        val result = lerpAngle(3.0f, -3.0f, 0.5f)
+
+        // Short arc from +3.0 to -3.0 goes through PI (distance ~0.28),
+        // not the long way around through 0 (distance ~6.0)
+        assertTrue(abs(result) > 2.5f, "Should take the short path past PI, got $result")
+    }
+
+    @Test
+    fun `lerpAngle with zero factor returns current`() {
+        val result = lerpAngle(1.5f, -1.5f, 0f)
+
+        assertEquals(1.5f, result)
+    }
+
+    @Test
+    fun `lerpAngle with factor 1 returns target via short path`() {
+        val result = lerpAngle(1.5f, -1.5f, 1f)
+
+        assertEquals(-1.5f, result, 0.001f)
+    }
+
+    @Test
+    fun `fish faces toward food when chasing`() {
+        val engine = AquariumPhysicsEngine(1080f, 2400f)
+        val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
+
+        // Keep spawning food far to the left so it persists long enough
+        var state = engine.update(sensor)
+        for (i in 0 until 200) {
+            if (state.food.isEmpty()) engine.feed(10f, 600f)
+            state = engine.update(sensor)
+            Thread.sleep(16)
+        }
+
+        // At least some fish should be facing left (cosA < 0)
+        val anyFacingLeft = state.fishAngles.any { (cosA, _) -> cosA < 0f }
+        assertTrue(anyFacingLeft,
+            "Some fish should face left toward food, angles: ${state.fishAngles.map { it.first }}")
+    }
+
+    @Test
+    fun `fish returns to facing right when no food`() {
+        val engine = AquariumPhysicsEngine(1080f, 2400f)
+        val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
+
+        // Spawn food, let fish chase and eat it
+        engine.feed(324f, 600f)
+        for (i in 0 until 100) {
+            engine.update(sensor)
+            Thread.sleep(16)
+        }
+
+        // Now run without food — angles should decay toward 0
+        var state = engine.update(sensor)
+        for (i in 0 until 100) {
+            state = engine.update(sensor)
+            Thread.sleep(16)
+        }
+
+        // All fish should be close to facing right (cosA near 1, sinA near 0)
+        for ((cosA, sinA) in state.fishAngles) {
+            assertTrue(cosA > 0.8f, "Fish should face right, cosA=$cosA")
+            assertTrue(abs(sinA) < 0.6f, "Fish sinA should be near 0, sinA=$sinA")
+        }
+    }
+
+    @Test
+    fun `fish angle transitions smoothly not instantly`() {
+        val engine = AquariumPhysicsEngine(1080f, 2400f)
+        val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
+
+        // First frame to initialize
+        engine.update(sensor)
+
+        // Spawn food far to the left — all fish start facing right (angle=0)
+        engine.feed(10f, 1200f)
+
+        // One frame only
+        val state = engine.update(sensor)
+
+        // Fish should NOT have snapped fully to facing left yet
+        // cosA should still be positive (not fully turned) for most fish
+        val mostStillFacingRight = state.fishAngles.count { (cosA, _) -> cosA > 0f }
+        assertTrue(mostStillFacingRight > state.fishAngles.size / 2,
+            "Most fish should still be partly facing right after one frame")
+    }
+
+    @Test
+    fun `PhysicsState fishAngles has correct count and unit values`() {
+        val engine = AquariumPhysicsEngine(1080f, 2400f)
+        val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
+
+        val state = engine.update(sensor)
+
+        assertEquals(18, state.fishAngles.size)
+        for ((cosA, sinA) in state.fishAngles) {
+            val magnitude = cosA * cosA + sinA * sinA
+            assertEquals(1f, magnitude, 0.01f, "cos²+sin² should be ~1, got $magnitude")
+        }
     }
 }

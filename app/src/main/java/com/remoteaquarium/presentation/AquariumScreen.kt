@@ -34,6 +34,7 @@ fun AquariumScreen(
     val physicsState by viewModel.physicsState.collectAsStateWithLifecycle(
         initialValue = PhysicsState(
             fish = List(SensorVariableRegistry.FISH_COUNT) { 540f to 1200f },
+            fishAngles = List(SensorVariableRegistry.FISH_COUNT) { 1f to 0f },
             bubbles = List(SensorVariableRegistry.BUBBLE_COUNT) { 540f to 1920f },
             food = emptyList(),
         )
@@ -106,6 +107,12 @@ private fun AquariumPlayer(
                     val (x, y) = physicsState.fish[i]
                     player.setUserLocalFloat(SensorVariableRegistry.fishVar(i, "X"), x)
                     player.setUserLocalFloat(SensorVariableRegistry.fishVar(i, "Y"), y)
+                }
+
+                for (i in physicsState.fishAngles.indices) {
+                    val (cosA, sinA) = physicsState.fishAngles[i]
+                    player.setUserLocalFloat(SensorVariableRegistry.fishAngleVar(i, "C"), cosA)
+                    player.setUserLocalFloat(SensorVariableRegistry.fishAngleVar(i, "S"), sinA)
                 }
 
                 for (i in physicsState.bubbles.indices) {

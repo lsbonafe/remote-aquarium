@@ -41,12 +41,14 @@ object FishBuilder {
         w: Float,
         h: Float,
         fishPositions: List<Pair<RFloat, RFloat>>,
+        fishAngles: List<Pair<RFloat, RFloat>>,
     ) {
         with(ctx) {
             for (i in fishPositions.indices) {
                 val (fx, fy) = fishPositions[i]
+                val (cosA, sinA) = fishAngles[i]
                 val v = visuals[i]
-                fish(fx, fy, v.bodyWidth, v.bodyHeight, v.bodyColor, v.finColor)
+                rotatedFish(fx, fy, v.bodyWidth, v.bodyHeight, v.bodyColor, v.finColor, cosA, sinA)
             }
         }
     }

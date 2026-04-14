@@ -1,6 +1,8 @@
 package com.remoteaquarium.presentation.physics
 
 import com.remoteaquarium.domain.model.SensorData
+import kotlin.math.PI
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -9,6 +11,7 @@ data class PhysicsObject(
     var y: Float,
     var vx: Float = 0f,
     var vy: Float = 0f,
+    var currentAngle: Float = 0f,
     val drag: Float = 0.96f,
     val gravityScale: Float = 300f,
     val restitution: Float = 0.3f,
@@ -21,9 +24,17 @@ data class PhysicsObject(
 
 data class PhysicsState(
     val fish: List<Pair<Float, Float>>,
+    val fishAngles: List<Pair<Float, Float>>,
     val bubbles: List<Pair<Float, Float>>,
     val food: List<Pair<Float, Float>>,
 )
+
+internal fun lerpAngle(current: Float, target: Float, factor: Float): Float {
+    var diff = (target - current).toDouble()
+    while (diff > PI) diff -= 2 * PI
+    while (diff < -PI) diff += 2 * PI
+    return current + diff.toFloat() * factor
+}
 
 class AquariumPhysicsEngine(
     width: Float,
@@ -47,6 +58,8 @@ class AquariumPhysicsEngine(
         private const val IDLE_SWIM_Y_FORCE_SCALE = 0.6f
         private const val NANOS_TO_SEC = 1_000_000_000f
         private const val MAX_DT = 0.05f
+        private const val CHASE_TURN_SPEED = 8f
+        private const val IDLE_TURN_SPEED = 3f
     }
 
     fun update(sensor: SensorData): PhysicsState {
@@ -96,6 +109,7 @@ class AquariumPhysicsEngine(
 
         return PhysicsState(
             fish = fishObjects.map { it.x to it.y },
+            fishAngles = fishObjects.map { cos(it.currentAngle) to sin(it.currentAngle) },
             bubbles = bubbleObjects.map { it.x to it.y },
             food = foodManager.positions,
         )
@@ -133,5 +147,16 @@ class AquariumPhysicsEngine(
         fish.vy *= fish.drag
         fish.x += fish.vx * dt
         fish.y += fish.vy * dt
+
+        val targetAngle = if (foodTarget != null) {
+            atan2(
+                (foodTarget.obj.y - fish.y).toDouble(),
+                (foodTarget.obj.x - fish.x).toDouble(),
+            ).toFloat()
+        } else {
+            0f
+        }
+        val turnSpeed = if (foodTarget != null) CHASE_TURN_SPEED else IDLE_TURN_SPEED
+        fish.currentAngle = lerpAngle(fish.currentAngle, targetAngle, (turnSpeed * dt).coerceAtMost(1f))
     }
 }

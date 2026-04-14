@@ -27,4 +27,16 @@ class SensorVariableRegistryTest {
         assertEquals(SensorVariableRegistry.ACCEL_X, names.accelX)
         assertEquals(SensorVariableRegistry.ACCEL_Y, names.accelY)
     }
+
+    @Test
+    fun `fishAngleVar generates correct key format`() {
+        assertEquals("fish5AC", SensorVariableRegistry.fishAngleVar(5, "C"))
+        assertEquals("fish0AS", SensorVariableRegistry.fishAngleVar(0, "S"))
+    }
+
+    @Test
+    fun `docFishAngleVar includes USER prefix`() {
+        assertEquals("USER:fish0AS", SensorVariableRegistry.docFishAngleVar(0, "S"))
+        assertEquals("USER:fish17AC", SensorVariableRegistry.docFishAngleVar(17, "C"))
+    }
 }
