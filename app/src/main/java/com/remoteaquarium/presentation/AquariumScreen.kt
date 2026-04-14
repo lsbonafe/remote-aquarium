@@ -142,6 +142,13 @@ private fun AquariumPlayer(
                     }
                 }
 
+                // Crown
+                player.setUserLocalFloat(SensorVariableRegistry.CROWN_X, physicsState.crownX)
+                player.setUserLocalFloat(SensorVariableRegistry.CROWN_Y, physicsState.crownY)
+                player.setUserLocalFloat(SensorVariableRegistry.CROWN_COS, physicsState.crownCos)
+                player.setUserLocalFloat(SensorVariableRegistry.CROWN_SIN, physicsState.crownSin)
+                player.setUserLocalFloat(SensorVariableRegistry.CROWN_SCALE, physicsState.crownScale)
+
                 player.invalidate()
             },
             modifier = Modifier.fillMaxSize(),

@@ -76,7 +76,7 @@ object FishMotion {
         fish.vy += tiltY * fish.gravityScale * dt
     }
 
-    private fun applyDragAndIntegrate(fish: PhysicsObject, dt: Float) {
+    internal fun applyDragAndIntegrate(fish: PhysicsObject, dt: Float) {
         fish.vx *= fish.drag
         fish.vy *= fish.drag
         fish.x += fish.vx * dt

@@ -30,6 +30,18 @@ object SensorVariableRegistry {
     fun fishScaleVar(index: Int) = "fish${index}Scale"
     fun docFishScaleVar(index: Int) = "${USER_PREFIX}fish${index}Scale"
 
+    // Crown (5 floats: position, rotation, scale)
+    const val CROWN_X = "crownX"
+    const val CROWN_Y = "crownY"
+    const val CROWN_COS = "crownCos"
+    const val CROWN_SIN = "crownSin"
+    const val CROWN_SCALE = "crownScale"
+    const val DOC_CROWN_X = "${USER_PREFIX}crownX"
+    const val DOC_CROWN_Y = "${USER_PREFIX}crownY"
+    const val DOC_CROWN_COS = "${USER_PREFIX}crownCos"
+    const val DOC_CROWN_SIN = "${USER_PREFIX}crownSin"
+    const val DOC_CROWN_SCALE = "${USER_PREFIX}crownScale"
+
     // Food positions (50 food x 2 coords)
     fun foodVar(index: Int, axis: String) = "food${index}$axis"
     fun docFoodVar(index: Int, axis: String) = "${USER_PREFIX}food${index}$axis"

@@ -42,6 +42,14 @@ object FacingDirection {
         return angle to CHASE_SPEED
     }
 
+    fun updateTowardTarget(fish: PhysicsObject, targetX: Float, targetY: Float, dt: Float) {
+        val angle = atan2(
+            (targetY - fish.y).toDouble(),
+            (targetX - fish.x).toDouble(),
+        ).toFloat()
+        fish.currentAngle = lerpAngle(fish.currentAngle, angle, (CHASE_SPEED * dt).coerceAtMost(1f))
+    }
+
     private fun settleToNearestSide(fish: PhysicsObject): Pair<Float, Float> {
         val lean = cos(fish.currentAngle.toDouble()).toFloat()
         val target = when {

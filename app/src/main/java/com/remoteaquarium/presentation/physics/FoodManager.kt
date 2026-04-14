@@ -2,6 +2,15 @@ package com.remoteaquarium.presentation.physics
 
 import kotlin.math.sqrt
 
+/**
+ * Manages food particles spawned by tap-to-feed.
+ *
+ * Behavior rules:
+ *  1. Tap spawns food → particle sinks with gravity and drag
+ *  2. Fish nearby     → attraction force pulls fish toward food
+ *  3. Fish touches    → food consumed, fish marked as eating
+ *  4. At floor        → food rests (velocity zeroed)
+ */
 class FoodManager(
     private val world: PhysicsWorld,
     private val maxFood: Int = 50,
@@ -10,6 +19,10 @@ class FoodManager(
     private val attractionForce: Float = 1200f,
     private val tiltDampen: Float = 0.15f,
 ) {
+    companion object {
+        private const val SINK_DRAG = 0.98f
+    }
+
     data class FoodParticle(
         val obj: PhysicsObject,
         val spawnTime: Float,
@@ -51,10 +64,16 @@ class FoodManager(
         }
     }
 
-    fun checkEating(fishObjects: List<PhysicsObject>): Set<Int> {
+    fun checkEating(
+        fishObjects: List<PhysicsObject>,
+        fishAlive: BooleanArray? = null,
+        skipIndex: Int = -1,
+    ): Set<Int> {
         val eaten = mutableSetOf<FoodParticle>()
         val eatingFishIndices = mutableSetOf<Int>()
         for ((index, fish) in fishObjects.withIndex()) {
+            if (fishAlive != null && !fishAlive[index]) continue
+            if (index == skipIndex) continue
             val eatDist = fish.radius + eatDistance
             for (food in particles) {
                 if (food in eaten) continue
@@ -74,7 +93,7 @@ class FoodManager(
     fun updatePositions(dt: Float) {
         particles.forEach { food ->
             food.obj.vy += sinkSpeed * dt
-            food.obj.vy *= 0.98f
+            food.obj.vy *= SINK_DRAG
             food.obj.y += food.obj.vy * dt
 
             if (food.obj.y > world.height - world.margin) {

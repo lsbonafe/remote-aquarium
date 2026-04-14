@@ -56,6 +56,13 @@ class AquariumDocumentBuilder @Inject constructor() {
                 fx to fy
             }
 
+            // Crown (off-screen by default — shown when last fish standing)
+            val crownX = RFloat(writer, addNamedFloat(SensorVariableRegistry.DOC_CROWN_X, -100f))
+            val crownY = RFloat(writer, addNamedFloat(SensorVariableRegistry.DOC_CROWN_Y, -100f))
+            val crownCos = RFloat(writer, addNamedFloat(SensorVariableRegistry.DOC_CROWN_COS, 1f))
+            val crownSin = RFloat(writer, addNamedFloat(SensorVariableRegistry.DOC_CROWN_SIN, 0f))
+            val crownScale = RFloat(writer, addNamedFloat(SensorVariableRegistry.DOC_CROWN_SCALE, 0f))
+
             root {
                 canvas(RecordingModifier().fillMaxSize()) {
                     val t = ContinuousSec()
@@ -66,6 +73,7 @@ class AquariumDocumentBuilder @Inject constructor() {
                     FishBuilder.draw(this, w, h, fishPositions, fishAngles, fishMouthOpen, fishScale)
                     BubbleBuilder.draw(this, w, h, bubblePositions)
                     FoodBuilder.draw(this, w, h, foodPositions)
+                    CrownBuilder.draw(this, w, h, crownX, crownY, crownCos, crownSin, crownScale)
                 }
 
             }
