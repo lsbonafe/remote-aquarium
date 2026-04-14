@@ -39,6 +39,14 @@ fun RemoteComposeContext.circle(
     drawCircle(cx.toFloat(), cy.toFloat(), radius)
 }
 
+fun RemoteComposeContext.circle(
+    cx: RFloat, cy: RFloat, radius: RFloat,
+    color: Int,
+) {
+    writer.rcPaint.setColor(color).commit()
+    drawCircle(cx.toFloat(), cy.toFloat(), radius.toFloat())
+}
+
 // === Stroked shapes ===
 
 fun RemoteComposeContext.line(
@@ -85,47 +93,51 @@ fun RemoteComposeContext.rotatedFish(
     cosA: RFloat,
     sinA: RFloat,
     mouthOpen: RFloat,
+    scale: RFloat,
     eyeColor: Int = NeonPalette.WHITE,
     pupilColor: Int = NeonPalette.BLACK,
 ) {
+    val sw = (scale * bodyWidth).flush()
+    val sh = (scale * bodyHeight).flush()
     val cos2 = (cosA * cosA).flush()
     val sin2 = (sinA * sinA).flush()
 
     // Body: swap width/height based on angle (pseudo-perspective)
-    val bw = (cos2 * bodyWidth + sin2 * bodyHeight).flush()
-    val bh = (cos2 * bodyHeight + sin2 * bodyWidth).flush()
+    val bw = (cos2 * sw + sin2 * sh).flush()
+    val bh = (cos2 * sh + sin2 * sw).flush()
     oval(cx - bw, cy - bh, cx + bw, cy + bh, color = bodyColor)
 
-    // Fin: rotate center offset (-bodyWidth*1.05, 0), swap dimensions
-    val finOx = -bodyWidth * 1.05f
+    // Fin: rotate center offset, swap dimensions
+    val finOx = (sw * -1.05f).flush()
     val finCx = (cx + cosA * finOx).flush()
     val finCy = (cy + sinA * finOx).flush()
-    val fhw = bodyWidth * 0.35f
-    val fhh = bodyHeight * 0.8f
+    val fhw = (sw * 0.35f).flush()
+    val fhh = (sh * 0.8f).flush()
     val fw = (cos2 * fhw + sin2 * fhh).flush()
     val fh = (cos2 * fhh + sin2 * fhw).flush()
     oval(finCx - fw, finCy - fh, finCx + fw, finCy + fh, color = finColor)
 
     // Mouth: oval at front of fish, height scales with mouthOpen (0 = invisible, 1 = open)
-    val mouthOx = bodyWidth * 0.65f
-    val mouthOy = 0f
-    val mcx = (cx + cosA * mouthOx - sinA * mouthOy).flush()
-    val mcy = (cy + sinA * mouthOx + cosA * mouthOy).flush()
-    val mouthW = bodyWidth * 0.1f
-    val mouthH = (mouthOpen * bodyHeight * 0.35f).flush()
+    val mouthOx = (sw * 0.65f).flush()
+    val mcx = (cx + cosA * mouthOx).flush()
+    val mcy = (cy + sinA * mouthOx).flush()
+    val mouthW = (sw * 0.1f).flush()
+    val mouthH = (mouthOpen * sh * 0.35f).flush()
     oval(mcx - mouthW, mcy - mouthH, mcx + mouthW, mcy + mouthH, color = NeonPalette.BLACK)
 
-    // Eye: rotate offset (bodyWidth*0.5, -bodyHeight*0.3)
-    val eyeOx = bodyWidth * 0.5f
-    val eyeOy = -bodyHeight * 0.3f
+    // Eye: rotate offset
+    val eyeOx = (sw * 0.5f).flush()
+    val eyeOy = (sh * -0.3f).flush()
     val ecx = (cx + cosA * eyeOx - sinA * eyeOy).flush()
     val ecy = (cy + sinA * eyeOx + cosA * eyeOy).flush()
-    circle(ecx, ecy, bodyWidth * 0.12f, color = eyeColor)
+    val eyeR = (sw * 0.12f).flush()
+    circle(ecx, ecy, eyeR, color = eyeColor)
 
-    // Pupil: rotate offset (bodyWidth*0.55, -bodyHeight*0.3)
-    val pupilOx = bodyWidth * 0.55f
-    val pupilOy = -bodyHeight * 0.3f
+    // Pupil: rotate offset
+    val pupilOx = (sw * 0.55f).flush()
+    val pupilOy = (sh * -0.3f).flush()
     val pcx = (cx + cosA * pupilOx - sinA * pupilOy).flush()
     val pcy = (cy + sinA * pupilOx + cosA * pupilOy).flush()
-    circle(pcx, pcy, bodyWidth * 0.06f, color = pupilColor)
+    val pupilR = (sw * 0.06f).flush()
+    circle(pcx, pcy, pupilR, color = pupilColor)
 }

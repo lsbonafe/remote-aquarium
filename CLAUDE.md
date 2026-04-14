@@ -1,6 +1,6 @@
 # RemoteAquarium
 
-Interactive neon aquarium app showcasing AndroidX Remote Compose (server-driven UI). The entire visual scene is rendered from a Remote Compose binary document. 18 fish and 6 bubbles react to phone tilt with real physics (gravity, momentum, drag, wall bouncing, fish-to-fish collision, idle swimming). Tap to drop food — fish rotate to face their target, chase it, open their mouth to swallow it, and settle facing left or right.
+Interactive neon aquarium app showcasing AndroidX Remote Compose (server-driven UI). The entire visual scene is rendered from a Remote Compose binary document. 18 fish and 6 bubbles react to phone tilt with real physics (gravity, momentum, drag, wall bouncing, fish-to-fish collision, idle swimming). Tap to drop food — fish rotate to face their target, chase it, open their mouth to swallow it, grow bigger, and settle facing left or right.
 
 ## Build & Test
 
@@ -44,7 +44,7 @@ com.remoteaquarium/
 ├── presentation/               # Android UI layer
 │   ├── AquariumActivity              # Fullscreen immersive mode, @AndroidEntryPoint
 │   ├── AquariumViewModel             # Loads document, runs physics, exposes flows
-│   ├── AquariumScreen                # Hosts RemoteComposePlayer, pushes 203 named floats per frame
+│   ├── AquariumScreen                # Hosts RemoteComposePlayer, pushes 221 named floats per frame
 │   ├── AquariumUiState               # Sealed interface: Loading, Ready, Error
 │   ├── sensor/                       # Accelerometer integration
 │   │   ├── SensorDataProvider        # Interface: Flow<SensorData>, start(), stop()
@@ -57,6 +57,7 @@ com.remoteaquarium/
 │       ├── BubblePhysics             # Bubble lifecycle: rise with buoyancy, respawn at bottom
 │       ├── FoodManager               # Spawns food on tap, tracks particles, handles eating
 │       ├── MouthAnimation            # Mouth open/close: snap open on eat, gradually close
+│       ├── GrowthTracker             # Fish grow 10% per food eaten, no cap
 │       ├── IdleDetector              # Detects no-tilt for 5s, blends to idle swimming
 │       ├── CollisionResolver         # Fish-to-fish collision separation + velocity exchange
 │       ├── PhysicsWorld              # World boundaries, clamp and bounce
@@ -77,7 +78,7 @@ com.remoteaquarium/
 **Local (baked into APK):**
 - Physics simulation: FishMotion (forces), FacingDirection (heading), BubblePhysics (lifecycle), FoodManager (spawn/eat)
 - Sensor pipeline: accelerometer reading, normalization, smoothing
-- The bridge: `setUserLocalFloat()` pushing 203 values per frame to the player
+- The bridge: `setUserLocalFloat()` pushing 221 values per frame to the player
 - Architecture glue: Hilt, ViewModel, Activity, Compose hosting
 
 **Contract between remote and local:** string-named float variables (`USER:` prefix on creation side, bare name on player side). Document declares them with `addNamedFloat()`, app pushes with `setUserLocalFloat()`. No schema, no type safety — just string matching.

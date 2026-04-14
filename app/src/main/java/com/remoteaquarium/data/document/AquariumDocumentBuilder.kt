@@ -39,6 +39,10 @@ class AquariumDocumentBuilder @Inject constructor() {
                 RFloat(writer, addNamedFloat(SensorVariableRegistry.docFishMouthVar(i), 0f))
             }
 
+            val fishScale = (0 until SensorVariableRegistry.FISH_COUNT).map { i ->
+                RFloat(writer, addNamedFloat(SensorVariableRegistry.docFishScaleVar(i), 1f))
+            }
+
             val bubblePositions = (0 until SensorVariableRegistry.BUBBLE_COUNT).map { i ->
                 val bx = RFloat(writer, addNamedFloat(SensorVariableRegistry.docBubbleVar(i, "X"), w * 0.5f))
                 val by = RFloat(writer, addNamedFloat(SensorVariableRegistry.docBubbleVar(i, "Y"), h * 0.8f))
@@ -59,7 +63,7 @@ class AquariumDocumentBuilder @Inject constructor() {
                     WaterLayerBuilder.draw(this, w, h, t, accelX)
                     SandFloorBuilder.draw(this, w, h)
                     SeaweedBuilder.draw(this, w, h, t, accelX)
-                    FishBuilder.draw(this, w, h, fishPositions, fishAngles, fishMouthOpen)
+                    FishBuilder.draw(this, w, h, fishPositions, fishAngles, fishMouthOpen, fishScale)
                     BubbleBuilder.draw(this, w, h, bubblePositions)
                     FoodBuilder.draw(this, w, h, foodPositions)
                 }

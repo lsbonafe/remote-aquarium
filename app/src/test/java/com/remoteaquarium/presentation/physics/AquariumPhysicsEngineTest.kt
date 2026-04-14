@@ -210,7 +210,7 @@ class AquariumPhysicsEngineTest {
         val engine = AquariumPhysicsEngine(1080f, 2400f)
         val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
 
-        var state = PhysicsState(emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
+        var state = PhysicsState(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
         for (i in 0 until 500) {
             state = engine.update(sensor)
             Thread.sleep(15)
@@ -535,5 +535,38 @@ class AquariumPhysicsEngineTest {
         val state = engine.update(sensor)
 
         assertTrue(state.fishMouthOpen.all { it == 0f }, "All mouths should be closed with no food")
+    }
+
+    // === Growth tests ===
+
+    @Test
+    fun `fish grows after eating`() {
+        val engine = AquariumPhysicsEngine(1080f, 2400f)
+        val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
+
+        val before = engine.update(sensor)
+        val initialScales = before.fishScale.toList()
+
+        // Spawn food at first fish position and let it eat
+        engine.feed(324f, 600f)
+        var state = engine.update(sensor)
+        for (i in 0 until 100) {
+            state = engine.update(sensor)
+            Thread.sleep(16)
+            if (state.food.isEmpty()) break
+        }
+
+        val grew = state.fishScale.any { it > 1f }
+        assertTrue(grew, "At least one fish should have grown after eating")
+    }
+
+    @Test
+    fun `fish starts at scale 1`() {
+        val engine = AquariumPhysicsEngine(1080f, 2400f)
+        val sensor = SensorData(accelX = 0f, accelY = AquariumPhysicsEngine.REST_ACCEL_Y)
+
+        val state = engine.update(sensor)
+
+        assertTrue(state.fishScale.all { it == 1f }, "All fish should start at scale 1.0")
     }
 }

@@ -26,6 +26,10 @@ object SensorVariableRegistry {
     fun fishMouthVar(index: Int) = "fish${index}Mouth"
     fun docFishMouthVar(index: Int) = "${USER_PREFIX}fish${index}Mouth"
 
+    // Fish scale (18 fish x 1 value: 1.0 = normal, grows by 0.1 per eat)
+    fun fishScaleVar(index: Int) = "fish${index}Scale"
+    fun docFishScaleVar(index: Int) = "${USER_PREFIX}fish${index}Scale"
+
     // Food positions (50 food x 2 coords)
     fun foodVar(index: Int, axis: String) = "food${index}$axis"
     fun docFoodVar(index: Int, axis: String) = "${USER_PREFIX}food${index}$axis"
