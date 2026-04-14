@@ -12,6 +12,35 @@ https://github.com/user-attachments/assets/739a3bef-7ff4-4238-aa39-7042a449c7c3
 
 Instead of JSON or XML, it captures **actual drawing operations** (ovals, circles, lines, gradients, animations) into a compact binary document that a player renders natively via Canvas.
 
+## How it compares to other approaches
+
+There are several ways to update UI without an app release. Each trades off different things:
+
+| | WebView | OTA (CodePush) | JSON SDUI | DivKit | Remote Compose |
+|---|---|---|---|---|---|
+| **What the server sends** | HTML/CSS/JS | JS bundle | JSON component tree | JSON + expressions | Binary drawing ops + math expressions |
+| **Rendering** | Web engine | Framework runtime | Native components | Built-in component set | Native Canvas |
+| **Platforms** | All | RN / Flutter | Any (custom) | Android, iOS, Web, Flutter | Android only |
+| **Custom visuals** | Unlimited | Unlimited | Limited to registered components | Built-in + extensions | Unlimited (Canvas primitives) |
+| **Animations** | CSS / JS | Full framework | Client-side or Lottie embed | Transitions + Lottie/Rive | Math expressions evaluated per frame |
+| **Data-reactive animations** | Yes (JS) | Yes | No | Partial (variable triggers) | Yes (expressions reference live named floats) |
+| **Performance** | Web overhead | Good | Good | Good | Native Canvas |
+| **Maturity** | Mature | Mature | Mature | Production (Yandex) | Alpha |
+
+Remote Compose's unique position is at the **drawing-operation level** — the server doesn't describe components ("a button", "a card"), it describes **what to draw** ("an oval at x,y with this color") and **how to animate it** ("oscillate x using sin(time * speed + phase)"). Those animation expressions are evaluated every frame and can reference named variables the app updates in real-time.
+
+The tradeoff is real: Android only, alpha stability, no component system, no visual editor. For forms and content screens, JSON SDUI or DivKit is more practical. Remote Compose shines when visuals go beyond what pre-built components can express.
+
+## Why an aquarium?
+
+The aquarium uses capabilities that are specific to Remote Compose's drawing-operation level:
+
+- **Seaweed** sways using `sin(time * speed + phase)` expressions that also reference `accelX` — the sway reacts to phone tilt in real-time. A Lottie file could animate seaweed, but it couldn't make it respond to live sensor data.
+- **Fish rotation** uses `cos²/sin²` dimension swapping in RFloat expressions, driven by angle floats the physics engine pushes 60 times per second. No pre-baked animation can depend on runtime physics output.
+- **Waves** ripple with time-based sin expressions that shift with accelerometer tilt.
+
+All of this lives in the binary document — changeable from a server without an app update. The app only provides the physics simulation and sensor data; the entire visual scene, including its animation behavior, is remote.
+
 ## Architecture
 
 ```
