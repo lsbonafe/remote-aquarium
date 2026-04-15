@@ -2,6 +2,10 @@
 
 An interactive neon aquarium Android app showcasing **AndroidX Remote Compose** — a server-driven UI framework that serializes drawing operations into compact binary documents rendered natively on Android.
 
+18 neon fish swim with real physics (gravity, momentum, drag, wall bouncing, fish-to-fish collision). Tap to drop food — fish rotate to face their target, chase it down, open their mouth to swallow it, grow a little bigger, and settle to face left or right based on their last heading. Bubbles rise and recycle. Seaweed sways. Waves ripple. Tilt your phone and everything reacts. Leave it still for 5 seconds and fish begin idle swimming on their own.
+
+https://github.com/user-attachments/assets/5af213ae-a57d-4efe-83f9-792cbbff41f3
+
 ## Table of Contents
 
 - [What is Remote Compose?](#what-is-remote-compose)
@@ -12,10 +16,6 @@ An interactive neon aquarium Android app showcasing **AndroidX Remote Compose** 
 - [Tech Stack](#tech-stack)
 - [Swapping mock for a real server](#swapping-mock-for-a-real-server)
 - [Lessons learned from Remote Compose alpha07](#lessons-learned-from-remote-compose-alpha07)
-
-18 neon fish swim with real physics (gravity, momentum, drag, wall bouncing, fish-to-fish collision). Tap to drop food — fish rotate to face their target, chase it down, open their mouth to swallow it, grow a little bigger, and settle to face left or right based on their last heading. Bubbles rise and recycle. Seaweed sways. Waves ripple. Tilt your phone and everything reacts. Leave it still for 5 seconds and fish begin idle swimming on their own.
-
-https://github.com/user-attachments/assets/5af213ae-a57d-4efe-83f9-792cbbff41f3
 
 ## What is Remote Compose?
 
