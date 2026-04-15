@@ -19,9 +19,9 @@ https://github.com/user-attachments/assets/5af213ae-a57d-4efe-83f9-792cbbff41f3
 
 ## What is Remote Compose?
 
-[AndroidX Remote Compose](https://developer.android.com/jetpack/androidx/releases/compose-remote) (`androidx.compose.remote`) is an official AndroidX library (currently alpha) that lets you define UI on a server using Kotlin, serialize it into a binary format, and render it on Android without app updates.
+[AndroidX Remote Compose](https://developer.android.com/jetpack/androidx/releases/compose-remote) (`androidx.compose.remote`) is an official AndroidX library (currently alpha) for server-driven UI on Android. A server defines the UI using Kotlin, serializes it into a compact binary document, and an on-device player renders it natively — no app update required.
 
-Instead of JSON or XML, it captures **actual drawing operations** (ovals, circles, lines, gradients, animations) into a compact binary document that a player renders natively via Canvas.
+Unlike JSON-based SDUI frameworks that describe components (buttons, cards, lists), Remote Compose operates at the **drawing-operation level** — the binary captures actual Canvas primitives (ovals, circles, lines, gradients) and mathematical expressions that animate them. This means anything you can draw on a Canvas can be delivered remotely, including visuals that don't map to any pre-built component.
 
 ## How it compares to other approaches
 
@@ -44,7 +44,7 @@ The tradeoff is real: Android only, alpha stability, no component system, no vis
 
 ## Why an aquarium?
 
-The aquarium uses capabilities that are specific to Remote Compose's drawing-operation level. The architecture splits into two halves:
+The aquarium uses Remote Compose's Canvas-level drawing operations and runtime expressions to build a fully animated scene from a binary document. The architecture splits into two halves:
 
 **Remote (in the binary document — changeable from a server):**
 - **Seaweed** sways using `sin(time * speed + phase)` expressions that reference `accelX` — the animation formula itself reacts to live sensor data. A Lottie file could animate seaweed, but it couldn't make it respond to phone tilt.
