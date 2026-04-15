@@ -4,7 +4,7 @@ An interactive neon aquarium Android app showcasing **AndroidX Remote Compose** 
 
 18 neon fish swim with real physics (gravity, momentum, drag, wall bouncing, fish-to-fish collision). Tap to drop food — fish rotate to face their target, chase it down, open their mouth to swallow it, grow a little bigger, and settle to face left or right based on their last heading. Bubbles rise and recycle. Seaweed sways. Waves ripple. Tilt your phone and everything reacts. Leave it still for 5 seconds and fish begin idle swimming on their own.
 
-https://github.com/user-attachments/assets/739a3bef-7ff4-4238-aa39-7042a449c7c3
+https://github.com/user-attachments/assets/5af213ae-a57d-4efe-83f9-792cbbff41f3
 
 ## What is Remote Compose?
 
