@@ -11,9 +11,9 @@ object GrowthTracker {
 
     private const val GROWTH_PER_EAT = 0.1f
 
-    fun update(scaleState: FloatArray, eatingFishIndices: Set<Int>) {
+    fun update(fish: List<PhysicsObject>, eatingFishIndices: Set<Int>) {
         for (i in eatingFishIndices) {
-            scaleState[i] += GROWTH_PER_EAT
+            fish[i].scale += GROWTH_PER_EAT
         }
     }
 }

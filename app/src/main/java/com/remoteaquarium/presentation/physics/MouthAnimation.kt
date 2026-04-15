@@ -11,11 +11,11 @@ object MouthAnimation {
 
     private const val CLOSE_SPEED = 3.3f
 
-    fun update(mouthState: FloatArray, eatingFishIndices: Set<Int>, dt: Float) {
-        for (i in mouthState.indices) {
-            mouthState[i] = when {
+    fun update(fish: List<PhysicsObject>, eatingFishIndices: Set<Int>, dt: Float) {
+        for (i in fish.indices) {
+            fish[i].mouthOpen = when {
                 i in eatingFishIndices -> 1f
-                else                  -> (mouthState[i] - CLOSE_SPEED * dt).coerceAtLeast(0f)
+                else -> (fish[i].mouthOpen - CLOSE_SPEED * dt).coerceAtLeast(0f)
             }
         }
     }
