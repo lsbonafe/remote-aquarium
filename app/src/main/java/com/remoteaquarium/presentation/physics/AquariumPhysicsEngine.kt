@@ -49,6 +49,13 @@ class AquariumPhysicsEngine(
     private val fishObjects = FishConfigs.create(width, height)
     private val bubbleObjects = FishConfigs.createBubbles(width, height)
 
+    // Pre-allocated buffers to avoid per-frame list allocations
+    private val fishPositions = MutableList(fishObjects.size) { 0f to 0f }
+    private val fishAngleData = MutableList(fishObjects.size) { 1f to 0f }
+    private val fishMouthData = MutableList(fishObjects.size) { 0f }
+    private val fishScaleData = MutableList(fishObjects.size) { 1f }
+    private val bubblePositionData = MutableList(bubbleObjects.size) { 0f to 0f }
+
     private var lastTimeNanos = System.nanoTime()
     private var elapsedTimeSec = 0f
 
@@ -92,12 +99,24 @@ class AquariumPhysicsEngine(
         // Food
         foodManager.updatePositions(dt)
 
+        // Fill pre-allocated buffers (avoids per-frame list allocations)
+        for (i in fishObjects.indices) {
+            val f = fishObjects[i]
+            fishPositions[i] = f.x to f.y
+            fishAngleData[i] = cos(f.currentAngle) to sin(f.currentAngle)
+            fishMouthData[i] = f.mouthOpen
+            fishScaleData[i] = f.scale
+        }
+        for (i in bubbleObjects.indices) {
+            bubblePositionData[i] = bubbleObjects[i].x to bubbleObjects[i].y
+        }
+
         return PhysicsState(
-            fish = fishObjects.map { it.x to it.y },
-            fishAngles = fishObjects.map { cos(it.currentAngle) to sin(it.currentAngle) },
-            fishMouthOpen = fishObjects.map { it.mouthOpen },
-            fishScale = fishObjects.map { it.scale },
-            bubbles = bubbleObjects.map { it.x to it.y },
+            fish = fishPositions,
+            fishAngles = fishAngleData,
+            fishMouthOpen = fishMouthData,
+            fishScale = fishScaleData,
+            bubbles = bubblePositionData,
             food = foodManager.positions,
         )
     }

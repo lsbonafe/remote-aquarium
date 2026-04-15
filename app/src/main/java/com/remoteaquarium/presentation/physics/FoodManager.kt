@@ -2,6 +2,15 @@ package com.remoteaquarium.presentation.physics
 
 import kotlin.math.sqrt
 
+/**
+ * Manages food particles spawned by tap-to-feed.
+ *
+ * Behavior rules:
+ *  1. Tap spawns food → clamped to screen bounds, sinks with gravity and drag
+ *  2. Fish nearby     → attraction force pulls fish toward food
+ *  3. Fish touches    → food consumed, fish marked as eating
+ *  4. At floor        → food rests (velocity zeroed)
+ */
 class FoodManager(
     private val world: PhysicsWorld,
     private val maxFood: Int = 50,
@@ -10,25 +19,33 @@ class FoodManager(
     private val attractionForce: Float = 1200f,
     private val tiltDampen: Float = 0.15f,
 ) {
+    companion object {
+        private const val SINK_DRAG = 0.98f
+    }
+
     data class FoodParticle(
         val obj: PhysicsObject,
         val spawnTime: Float,
     )
 
     private val particles = mutableListOf<FoodParticle>()
+    private val _positions = mutableListOf<Pair<Float, Float>>()
 
     val hasFood: Boolean get() = particles.isNotEmpty()
 
-    val positions: List<Pair<Float, Float>> get() = particles.map { it.obj.x to it.obj.y }
+    val positions: List<Pair<Float, Float>> get() = _positions
 
     fun spawn(x: Float, y: Float, elapsedTime: Float) {
         if (particles.size >= maxFood) return
+        val clampedX = x.coerceIn(world.margin, world.width - world.margin)
+        val clampedY = y.coerceIn(world.margin, world.height - world.margin)
         particles.add(
             FoodParticle(
-                obj = PhysicsObject(x = x, y = y, vy = 0f, drag = 0.98f),
+                obj = PhysicsObject(x = clampedX, y = clampedY, vy = 0f, drag = SINK_DRAG),
                 spawnTime = elapsedTime,
             )
         )
+        _positions.add(clampedX to clampedY)
     }
 
     fun findNearestTarget(fish: PhysicsObject): FoodParticle? {
@@ -74,7 +91,7 @@ class FoodManager(
     fun updatePositions(dt: Float) {
         particles.forEach { food ->
             food.obj.vy += sinkSpeed * dt
-            food.obj.vy *= 0.98f
+            food.obj.vy *= SINK_DRAG
             food.obj.y += food.obj.vy * dt
 
             if (food.obj.y > world.height - world.margin) {
@@ -82,6 +99,8 @@ class FoodManager(
                 food.obj.vy = 0f
             }
         }
+        _positions.clear()
+        particles.forEach { _positions.add(it.obj.x to it.obj.y) }
     }
 
     val tiltDampenFactor: Float get() = tiltDampen

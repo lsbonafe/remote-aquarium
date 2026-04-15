@@ -177,6 +177,28 @@ class AquariumPhysicsEngineTest {
         assertTrue(manager.hasFood, "Distant food should not be eaten")
     }
 
+    @Test
+    fun `spawn clamps negative coordinates to margin`() {
+        val world = PhysicsWorld(1080f, 2400f, margin = 40f)
+        val manager = FoodManager(world)
+
+        manager.spawn(-50f, -50f, 0f)
+
+        assertEquals(40f, manager.positions[0].first, "X should clamp to margin")
+        assertEquals(40f, manager.positions[0].second, "Y should clamp to margin")
+    }
+
+    @Test
+    fun `spawn clamps off-screen coordinates to bounds`() {
+        val world = PhysicsWorld(1080f, 2400f, margin = 40f)
+        val manager = FoodManager(world)
+
+        manager.spawn(9999f, 9999f, 0f)
+
+        assertEquals(1040f, manager.positions[0].first, "X should clamp to width - margin")
+        assertEquals(2360f, manager.positions[0].second, "Y should clamp to height - margin")
+    }
+
     // === Integration tests ===
 
     @Test
