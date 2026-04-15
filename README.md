@@ -42,7 +42,7 @@ The aquarium uses capabilities that are specific to Remote Compose's drawing-ope
 - **Food particles**, bubble shapes, neon colors, fish sizes — all visual decisions live in the document.
 
 **Local (baked into the APK):**
-- Physics simulation (gravity, drag, collision, food chasing, idle swimming) runs app-side and pushes 185 named floats per frame to the player.
+- Physics simulation (gravity, drag, collision, food chasing, idle swimming) runs app-side and pushes 221 named floats per frame to the player.
 
 This split is the point: a server can redesign every visual — fish shapes, colors, animation formulas, how rotation looks — without an app update. The app just provides positions and angles. Swap the document and you get a completely different scene with the same physics.
 
