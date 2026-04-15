@@ -21,7 +21,7 @@ https://github.com/user-attachments/assets/5af213ae-a57d-4efe-83f9-792cbbff41f3
 
 [AndroidX Remote Compose](https://developer.android.com/jetpack/androidx/releases/compose-remote) (`androidx.compose.remote`) is an official AndroidX library (currently alpha) for server-driven UI on Android. A server defines the UI using Kotlin, serializes it into a compact binary document, and an on-device player renders it natively — no app update required.
 
-Unlike JSON-based SDUI frameworks that describe components (buttons, cards, lists), Remote Compose operates at the **drawing-operation level** — the binary captures actual Canvas primitives (ovals, circles, lines, gradients) and mathematical expressions that animate them. This means anything you can draw on a Canvas can be delivered remotely, including visuals that don't map to any pre-built component.
+Unlike JSON-based SDUI frameworks that describe components (buttons, cards, lists), Remote Compose operates at the **drawing-operation level** — the binary document captures Canvas primitives (ovals, circles, lines, gradients) and supports expressions for dynamic values. This gives it more flexibility than component-based approaches, at the cost of being lower level.
 
 ## How it compares to other approaches
 
