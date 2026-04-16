@@ -38,10 +38,6 @@ There are several ways to update UI without an app release. Each trades off diff
 | **Performance** | Web overhead | Good | Good | Good | Native Canvas |
 | **Maturity** | Mature | Mature | Mature | Production (Yandex) | Alpha |
 
-Remote Compose's unique position is at the **drawing-operation level** — the server doesn't describe components ("a button", "a card"), it describes **what to draw** ("an oval at x,y with this color") and **how to animate it** ("oscillate x using sin(time * speed + phase)"). Those animation expressions are evaluated every frame and can reference named variables the app updates in real-time.
-
-The tradeoff is real: Android only, alpha stability, no component system, no visual editor. For forms and content screens, JSON SDUI or DivKit is more practical. Remote Compose shines when visuals go beyond what pre-built components can express.
-
 ## Why an aquarium?
 
 The aquarium uses Remote Compose's Canvas-level drawing operations and runtime expressions to build a fully animated scene from a binary document. The architecture splits into two halves:
